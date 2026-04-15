@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>die Ragebaiters | Professional Airsoft Team</title>
+  <meta name="description" content="Offizielle Teamseite von die Ragebaiters – Taktik, Teamplay und sauberer Sportsgeist im Airsoft." />
+  <style>
+    :root {
+      --bg: #0c0f12;
+      --bg-soft: #12171c;
+      --panel: rgba(255,255,255,0.05);
+      --panel-strong: rgba(255,255,255,0.08);
+      --text: #ecf1f5;
+      --muted: #a9b4be;
+      --line: rgba(255,255,255,0.1);
+      --accent: #b7ff3c;
+      --accent-2: #7fd61c;
+      --shadow: 0 20px 60px rgba(0,0,0,0.35);
+      --radius: 20px;
+      --max: 1180px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background-color: #0a0d10;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      min-height: 100dvh;
+    }
+
+    body {
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(183,255,60,0.08), transparent 30%),
+        linear-gradient(180deg, #0a0d10 0%, #0f1419 100%);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    .container {
+      width: min(calc(100% - 32px), var(--max));
+      margin: 0 auto;
+    }
+
+    /* Banner Bereich */
+    .top-banner {
+      width: min(calc(100% - 24px), 1400px);
+      margin: 14px auto 0;
+      border-radius: 22px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      background: #000;
+    }
+
+    .top-banner img {
+      width: 100%;
+      height: auto;
+      max-height: 400px;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* GLOBALES LINK-STYLING (Grün ausgefüllte Boxen) */
+    a {
+      color: #000 !important;
+      text-decoration: none;
+      background: var(--accent);
+      border: 2px solid var(--accent);
+      padding: 8px 16px;
+      border-radius: 10px;
+      display: inline-block;
+      font-weight: 800;
+      transition: all 0.25s ease;
+      text-transform: uppercase;
+      font-size: 0.85rem;
+      letter-spacing: 0.02em;
+    }
+
+    a:hover {
+      background: var(--accent-2);
+      border-color: var(--accent-2);
+      box-shadow: 0 0 20px rgba(183,255,60,0.4);
+      transform: translateY(-2px);
+    }
+
+    a.tab-link.active {
+      box-shadow: 0 0 15px rgba(183,255,60,0.3);
+      border-color: #fff;
+    }
+
+    header { padding: 20px 0; }
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.03);
+      backdrop-filter: blur(12px);
+      border-radius: 18px;
+      position: sticky;
+      top: 14px;
+      z-index: 100;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .hero { padding: 80px 0; }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: 50px;
+      align-items: center;
+    }
+
+    .hero-logo-large img {
+      width: 100%;
+      max-width: 450px;
+      filter: drop-shadow(0 0 40px rgba(183,255,60,0.25));
+      animation: float 6s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-15px); }
+    }
+
+    .hero-content {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(183,255,60,0.3);
+      background: rgba(183,255,60,0.1);
+      color: var(--accent);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      width: fit-content;
+      letter-spacing: 0.05em;
+    }
+
+    .hero h2 {
+      font-size: clamp(2.5rem, 5vw, 4.2rem);
+      line-height: 1.1;
+      margin: 10px 0;
+      letter-spacing: -0.04em;
+      font-weight: 900;
+    }
+
+    .member-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 24px;
+      margin-top: 20px;
+    }
+    .member-card {
+      padding: 40px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      text-align: center;
+      transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .member-card:hover {
+      background: var(--panel-strong);
+      border-color: var(--accent);
+      transform: translateY(-5px);
+    }
+    .member-card.lead {
+      border: 2px solid var(--accent);
+      background: linear-gradient(180deg, rgba(183,255,60,0.05), transparent);
+    }
+    .role-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #000;
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      margin-bottom: 15px;
+    }
+
+    .section { padding: 60px 0; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    .card { padding: 40px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); display: flex; flex-direction: column; gap: 15px; }
+    .card h4 { color: var(--accent); margin: 0; font-size: 1.4rem; font-weight: 800; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 40px; }
+
+    .list { display: grid; gap: 24px; margin-top: 20px; }
+    .list-item { display: flex; gap: 20px; align-items: flex-start; padding-top: 24px; border-top: 1px solid var(--line); }
+    .dot { width: 12px; height: 12px; border-radius: 3px; background: var(--accent); margin-top: 8px; flex: 0 0 auto; transform: rotate(45deg); }
+
+    .footer { padding: 60px 0; border-top: 1px solid var(--line); margin-top: 80px; color: var(--muted); font-size: 0.95rem; }
+    .footer-box { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 30px; }
+    .footer-links { display: flex; gap: 12px; flex-wrap: wrap; }
+
+    @media (max-width: 1000px) {
+      .hero-grid, .grid-3, .split { grid-template-columns: 1fr; }
+      .nav { flex-direction: column; gap: 20px; text-align: center; }
+      .nav-links { justify-content: center; }
+    }
+
+    .tab-page { display: none; }
+    .tab-page.active { display: block; }
+  </style>
+</head>
+<body>
+
+  <div class="top-banner">
+    <img src="banner2.png" alt="die Ragebaiters Banner" />
+  </div>
+
+  <header class="container">
+    <nav class="nav">
+      <div style="font-weight: 900; font-size: 1.6rem; letter-spacing: -0.03em; color: var(--text);">die Ragebaiters</div>
+      <div class="nav-links">
+        <a href="#" class="tab-link active" data-tab="home">Startseite</a>
+        <a href="#" class="tab-link" data-tab="team">Team</a>
+        <a href="#" class="tab-link" data-tab="impressum">Impressum</a>
+        <a href="#" class="tab-link" data-tab="datenschutz">Datenschutz</a>
+        <a href="https://www.instagram.com/die_ragebaiters/" target="_blank">Instagram</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container">
+    
+    <div id="tab-home" class="tab-page active">
+      <section class="hero">
+        <div class="hero-grid">
+          <div class="hero-logo-large">
+            <img src="logo.png" alt="die Ragebaiters Team Logo" />
+          </div>
+          <div class="hero-content">
+            <span class="eyebrow">Professional Tactical Unit</span>
+            <h2>Keine Kompromisse.<br>Nur Koordination.</h2>
+            <p style="margin-bottom: 0;">Willkommen bei den <strong>Ragebaiters</strong>. Wir stehen für taktische Exzellenz, visuelle Konsistenz und kompromisslose Fairness im Airsoft.</p>
+            
+            <div style="padding: 16px 20px; background: rgba(183,255,60,0.05); border-left: 3px solid var(--accent); border-radius: 8px; font-size: 1.1rem; color: var(--text);">
+              Wir sind ein Airsoft-Team aus dem Kreis Mayen-Koblenz. Wir spielen hauptsächlich auf der Area M. Bei Interesse schreib uns gerne an, wir freuen uns!
+            </div>
+
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+              <a href="#" class="tab-link" data-tab="team" style="padding: 16px 32px;">Die Einheit ansehen</a>
+              <a href="#about" class="tab-link" data-tab="home" style="padding: 16px 32px; background: transparent; color: var(--text); border-color: var(--line);">Unsere Philosophie</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="about" class="section">
+        <div class="split">
+          <article class="card">
+            <h3 style="margin:0; color: var(--accent);">Was uns ausmacht</h3>
+            <div class="list">
+              <div class="list-item">
+                <span class="dot"></span>
+                <div><strong>Kommunikation unter Druck</strong><br><span style="color: var(--muted);">Kurze, klare Infos. Gute Calls entscheiden oft mehr als rohe Geschwindigkeit.</span></div>
+              </div>
+              <div class="list-item">
+                <span class="dot"></span>
+                <div><strong>Sauberes Teamplay</strong><br><span style="color: var(--muted);">Pushes, Winkel, Absicherung und Rollenverteilung greifen ineinander.</span></div>
+              </div>
+              <div class="list-item">
+                <span class="dot"></span>
+                <div><strong>Präsenz mit Wiedererkennungswert</strong><br><span style="color: var(--muted);">Ein Team soll nicht nur spielen, sondern auch als Marke sichtbar auftreten.</span></div>
+              </div>
+            </div>
+          </article>
+          <article class="card">
+            <h3 style="margin:0; color: var(--accent);">Unser Anspruch</h3>
+            <p>Gute Spiele entstehen aus Vorbereitung und Verlässlichkeit. Wir wollen einen professionellen Eindruck hinterlassen, bei dem jeder sofort versteht, wofür wir stehen.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="grid-3">
+            <div class="card" style="border-top: 4px solid var(--accent);">
+                <h4>Auf dem Feld</h4>
+                <p>Objektiv spielen, Positionen halten, Lücken nutzen und Momentum erzeugen.</p>
+            </div>
+            <div class="card" style="border-top: 4px solid var(--accent-2);">
+                <h4>Außerhalb des Felds</h4>
+                <p>Community pflegen, Content liefern, Teamkultur stärken und sichtbar bleiben.</p>
+            </div>
+            <div class="card">
+                <h4>Loadout & Auftreten</h4>
+                <p>Einheitlicher Look, sinnvolle Ausrüstung und ein Setup, das im Spiel funktioniert.</p>
+            </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="tab-team" class="tab-page">
+      <section class="section">
+        <span class="eyebrow">Roster</span>
+        <h2 style="font-size: 3.5rem; margin: 10px 0 40px; letter-spacing: -0.04em;">Die Einheit</h2>
+        
+        <h3 style="color: var(--accent); margin-bottom: 20px;">Teamführung</h3>
+        <div class="member-grid" style="grid-template-columns: 1fr;">
+          <div class="member-card lead">
+            <div class="role-badge">Teamführer</div>
+            <div style="font-size: 2rem; font-weight: 900; letter-spacing: -0.02em;">Yotzek</div>
+          </div>
+        </div>
+
+        <h3 style="margin: 60px 0 20px; color: var(--text);">Operatoren</h3>
+        <div class="member-grid">
+          <div class="member-card">
+            <div style="font-size: 1.4rem; font-weight: 800;">MundMBrothers</div>
+          </div>
+          <div class="member-card">
+            <div style="font-size: 1.4rem; font-weight: 800;">Disccave</div>
+          </div>
+          <div class="member-card">
+            <div style="font-size: 1.4rem; font-weight: 800;">Nathan Goldstein</div>
+          </div>
+          <div class="member-card">
+            <div style="font-size: 1.4rem; font-weight: 800;">Gemeral Richard</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="tab-impressum" class="tab-page">
+      <section class="section">
+        <h2>Impressum</h2>
+        <div class="card">
+          <p>die Ragebaiters Airsoft Team<br>Kontakt: Ragebaiters@gmx.de</p>
+          <p>Michael Scholz<br>Höhrer straße 11<br>56179 Vallendarr</p>
+        </div>
+      </section>
+    </div>
+
+    <div id="tab-datenschutz" class="tab-page">
+      <section class="section">
+        <h2>Datenschutz</h2>
+        <div class="card">
+          <p>Diese Seite dient rein informativen Zwecken. Es werden keine personenbezogenen Daten erhoben.</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer container">
+    <div class="footer-box">
+      <div class="footer-links">
+        <a href="#" class="tab-link" data-tab="home">Startseite</a>
+        <a href="#" class="tab-link" data-tab="team">Team</a>
+        <a href="#" class="tab-link" data-tab="impressum">Impressum</a>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-weight: 800; color: var(--text);">die Ragebaiters</div>
+        <div style="font-size: 0.8rem;">Professional Airsoft Team • Est. 2026</div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    document.querySelectorAll('.tab-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        const href = link.getAttribute('href');
+        if (href && !href.startsWith('#') && link.getAttribute('target') === '_blank') return;
+        if (href && href.startsWith('mailto:')) return;
+
+        e.preventDefault();
+        const tab = link.getAttribute('data-tab');
+        if(!tab) return;
+
+        document.querySelectorAll('.tab-page').forEach(page => page.classList.remove('active'));
+        document.querySelectorAll('.tab-link').forEach(l => l.classList.remove('active'));
+        
+        const targetPage = document.getElementById('tab-' + tab);
+        if(targetPage) {
+          targetPage.classList.add('active');
+          document.querySelectorAll(`.tab-link[data-tab="${tab}"]`).forEach(l => l.classList.add('active'));
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
+</html>
