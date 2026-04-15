@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>die Ragebaiters | Professional Airsoft Team</title>
+  <meta name="description" content="Offizielle Teamseite von die Ragebaiters – Taktik, Teamplay und sauberer Sportsgeist im Airsoft." />
   <style>
     :root {
       --bg: #0c0f12;
@@ -200,6 +201,9 @@
     }
 
     .section { padding: 60px 0; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    .card { padding: 40px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); display: flex; flex-direction: column; gap: 15px; }
+    .card h4 { color: var(--accent); margin: 0; font-size: 1.4rem; font-weight: 800; }
     .split { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 40px; }
 
     .list { display: grid; gap: 24px; margin-top: 20px; }
@@ -210,8 +214,19 @@
     .footer-box { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 30px; }
     .footer-links { display: flex; gap: 12px; flex-wrap: wrap; }
 
+    /* Wasserzeichen */
+    .final-credit {
+      text-align: center;
+      padding: 20px 0 40px;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.2);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
     @media (max-width: 1000px) {
-      .hero-grid, .split { grid-template-columns: 1fr; }
+      .hero-grid, .grid-3, .split { grid-template-columns: 1fr; }
       .nav { flex-direction: column; gap: 20px; text-align: center; }
       .nav-links { justify-content: center; }
     }
@@ -223,7 +238,7 @@
 <body>
 
   <div class="top-banner">
-    <img src="banner2.png" alt="die Ragebaiters Banner" />
+    <img src="banner.png" alt="die Ragebaiters Banner" />
   </div>
 
   <header class="container">
@@ -250,14 +265,15 @@
           <div class="hero-content">
             <span class="eyebrow">Professional Tactical Unit</span>
             <h2>Keine Kompromisse.<br>Nur Koordination.</h2>
-            <p>Willkommen bei den <strong>Ragebaiters</strong>. Wir stehen für taktische Exzellenz und Fairness im Airsoft.</p>
+            <p style="margin-bottom: 0;">Willkommen bei den <strong>Ragebaiters</strong>. Wir stehen für taktische Exzellenz, visuelle Konsistenz und kompromisslose Fairness im Airsoft.</p>
             
             <div style="padding: 16px 20px; background: rgba(183,255,60,0.05); border-left: 3px solid var(--accent); border-radius: 8px; font-size: 1.1rem; color: var(--text);">
-              Wir sind ein Airsoft-Team aus dem Kreis Mayen-Koblenz. Wir spielen hauptsächlich auf der Area M. Bei Interesse schreib uns gerne an!
+              Wir sind ein Airsoft-Team aus dem Kreis Mayen-Koblenz. Wir spielen hauptsächlich auf der Area M. Bei Interesse schreib uns gerne an, wir freuen uns!
             </div>
 
             <div style="display: flex; gap: 15px; flex-wrap: wrap;">
               <a href="#" class="tab-link" data-tab="team" style="padding: 16px 32px;">Die Einheit ansehen</a>
+              <a href="#about" class="tab-link" data-tab="home" style="padding: 16px 32px; background: transparent; color: var(--text); border-color: var(--line);">Unsere Philosophie</a>
             </div>
           </div>
         </div>
@@ -270,14 +286,39 @@
             <div class="list">
               <div class="list-item">
                 <span class="dot"></span>
-                <div><strong>Kommunikation</strong><br><span style="color: var(--muted);">Klare Calls entscheiden das Spiel.</span></div>
+                <div><strong>Kommunikation unter Druck</strong><br><span style="color: var(--muted);">Kurze, klare Infos. Gute Calls entscheiden oft mehr als rohe Geschwindigkeit.</span></div>
               </div>
               <div class="list-item">
                 <span class="dot"></span>
-                <div><strong>Teamplay</strong><br><span style="color: var(--muted);">Pushes und Absicherung greifen ineinander.</span></div>
+                <div><strong>Sauberes Teamplay</strong><br><span style="color: var(--muted);">Pushes, Winkel, Absicherung und Rollenverteilung greifen ineinander.</span></div>
+              </div>
+              <div class="list-item">
+                <span class="dot"></span>
+                <div><strong>Präsenz mit Wiedererkennungswert</strong><br><span style="color: var(--muted);">Ein Team soll nicht nur spielen, sondern auch als Marke sichtbar auftreten.</span></div>
               </div>
             </div>
           </article>
+          <article class="card">
+            <h3 style="margin:0; color: var(--accent);">Unser Anspruch</h3>
+            <p>Gute Spiele entstehen aus Vorbereitung und Verlässlichkeit. Wir wollen einen professionellen Eindruck hinterlassen, bei dem jeder sofort versteht, wofür wir stehen.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="grid-3">
+            <div class="card" style="border-top: 4px solid var(--accent);">
+                <h4>Auf dem Feld</h4>
+                <p>Objektiv spielen, Positionen halten, Lücken nutzen und Momentum erzeugen.</p>
+            </div>
+            <div class="card" style="border-top: 4px solid var(--accent-2);">
+                <h4>Außerhalb des Felds</h4>
+                <p>Community pflegen, Content liefern, Teamkultur stärken und sichtbar bleiben.</p>
+            </div>
+            <div class="card">
+                <h4>Loadout & Auftreten</h4>
+                <p>Einheitlicher Look, sinnvolle Ausrüstung und ein Setup, das im Spiel funktioniert.</p>
+            </div>
         </div>
       </section>
     </div>
@@ -285,23 +326,38 @@
     <div id="tab-team" class="tab-page">
       <section class="section">
         <span class="eyebrow">Roster</span>
-        <h2 style="font-size: 3.5rem; margin: 10px 0 40px;">Die Einheit</h2>
+        <h2 style="font-size: 3.5rem; margin: 10px 0 40px; letter-spacing: -0.04em;">Die Einheit</h2>
         
         <h3 style="color: var(--accent); margin-bottom: 20px;">Teamführung</h3>
         <div class="member-grid" style="grid-template-columns: 1fr;">
           <div class="member-card lead">
             <div class="role-badge">Teamführer</div>
-            <div style="font-size: 2rem; font-weight: 900;">Yotzek</div>
+            <div style="font-size: 2rem; font-weight: 900; letter-spacing: -0.02em;">Yotzek</div>
           </div>
         </div>
 
         <h3 style="margin: 60px 0 20px; color: var(--text);">Operatoren</h3>
         <div class="member-grid">
-          <div class="member-card"><div style="font-size: 1.4rem; font-weight: 800;">MundMBrothers</div></div>
-          <div class="member-card"><div style="font-size: 1.4rem; font-weight: 800;">Disccave</div></div>
-          <div class="member-card"><div style="font-size: 1.4rem; font-weight: 800;">Nathan Goldstein</div></div>
-          <div class="member-card"><div style="font-size: 1.4rem; font-weight: 800;">Gemeral Richard</div></div>
-          <div class="member-card"><div style="font-size: 1.4rem; font-weight: 800;">Wolfgang</div></div>
+          <div class="member-card">
+            <div class="role-badge">Medic</div>
+            <div style="font-size: 1.4rem; font-weight: 800;">MundMBrothers</div>
+          </div>
+          <div class="member-card">
+            <div class="role-badge">Breacher</div>
+            <div style="font-size: 1.4rem; font-weight: 800;">Disccave</div>
+          </div>
+          <div class="member-card">
+            <div class="role-badge">Breacher</div>
+            <div style="font-size: 1.4rem; font-weight: 800;">Gemeral Richard</div>
+          </div>
+          <div class="member-card">
+            <div class="role-badge">Support</div>
+            <div style="font-size: 1.4rem; font-weight: 800;">Nathan Goldstein</div>
+          </div>
+          <div class="member-card">
+            <div class="role-badge">Techniker</div>
+            <div style="font-size: 1.4rem; font-weight: 800;">Wolfgang</div>
+          </div>
         </div>
       </section>
     </div>
@@ -310,8 +366,8 @@
       <section class="section">
         <h2>Impressum</h2>
         <div class="card">
-          <p>die Ragebaiters Airsoft Team<br>Michael Scholz<br>Höhrer straße 11<br>56179 Vallendarr</p>
-          <p>Kontakt: Ragebaiters@gmx.de</p>
+          <p>die Ragebaiters Airsoft Team<br>Kontakt: Ragebaiters@gmx.de</p>
+          <p>Michael Scholz<br>Höhrer straße 11<br>56179 Vallendarr</p>
         </div>
       </section>
     </div>
@@ -320,7 +376,7 @@
       <section class="section">
         <h2>Datenschutz</h2>
         <div class="card">
-          <p>Diese Webseite dient rein informativen Zwecken.</p>
+          <p>Diese Seite dient rein informativen Zwecken. Es werden keine personenbezogenen Daten erhoben.</p>
         </div>
       </section>
     </div>
@@ -335,10 +391,14 @@
       </div>
       <div style="text-align: right;">
         <div style="font-weight: 800; color: var(--text);">die Ragebaiters</div>
-        <div style="font-size: 0.8rem;">Est. 2026</div>
+        <div style="font-size: 0.8rem;">Professional Airsoft Team • Est. 2026</div>
       </div>
     </div>
   </footer>
+
+  <div class="final-credit">
+    Made by sneiper0
+  </div>
 
   <script>
     document.querySelectorAll('.tab-link').forEach(link => {
@@ -364,8 +424,4 @@
     });
   </script>
 </body>
-</html>
-  </script>
-</body>
-</html>
 </html>
