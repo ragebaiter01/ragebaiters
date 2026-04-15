@@ -48,7 +48,6 @@
       margin: 0 auto;
     }
 
-    /* Banner Bereich */
     .top-banner {
       width: min(calc(100% - 24px), 1400px);
       margin: 14px auto 0;
@@ -67,7 +66,7 @@
       display: block;
     }
 
-    /* GLOBALES LINK-STYLING */
+    /* GLOBALES LINK-STYLING (Grüne Buttons) */
     a {
       color: #000 !important;
       text-decoration: none;
@@ -81,6 +80,7 @@
       text-transform: uppercase;
       font-size: 0.85rem;
       letter-spacing: 0.02em;
+      cursor: pointer;
     }
 
     a:hover {
@@ -244,10 +244,10 @@
     <nav class="nav">
       <div style="font-weight: 900; font-size: 1.6rem; letter-spacing: -0.03em; color: var(--text);">die Ragebaiters</div>
       <div class="nav-links">
-        <a href="#" class="tab-link active" data-tab="home">Startseite</a>
-        <a href="#" class="tab-link" data-tab="team">Team</a>
-        <a href="#" class="tab-link" data-tab="impressum">Impressum</a>
-        <a href="#" class="tab-link" data-tab="datenschutz">Datenschutz</a>
+        <a class="tab-link active" data-tab="home">Startseite</a>
+        <a class="tab-link" data-tab="team">Team</a>
+        <a class="tab-link" data-tab="impressum">Impressum</a>
+        <a class="tab-link" data-tab="datenschutz">Datenschutz</a>
         <a href="https://www.instagram.com/die_ragebaiters/" target="_blank">Instagram</a>
       </div>
     </nav>
@@ -271,8 +271,8 @@
             </div>
 
             <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-              <a href="#" class="tab-link" data-tab="team" style="padding: 16px 32px;">Die Einheit ansehen</a>
-              <a href="#about" class="tab-link" data-tab="home" style="padding: 16px 32px; background: transparent; color: var(--text); border-color: var(--line);">Unsere Philosophie</a>
+              <a class="tab-link" data-tab="team" style="padding: 16px 32px;">Die Einheit ansehen</a>
+              <a href="#about" style="padding: 16px 32px;">Unsere Philosophie</a>
             </div>
           </div>
         </div>
@@ -301,23 +301,6 @@
             <h3 style="margin:0; color: var(--accent);">Unser Anspruch</h3>
             <p>Gute Spiele entstehen aus Vorbereitung und Verlässlichkeit. Wir wollen einen professionellen Eindruck hinterlassen, bei dem jeder sofort versteht, wofür wir stehen.</p>
           </article>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="grid-3">
-            <div class="card" style="border-top: 4px solid var(--accent);">
-                <h4>Auf dem Feld</h4>
-                <p>Objektiv spielen, Positionen halten, Lücken nutzen und Momentum erzeugen.</p>
-            </div>
-            <div class="card" style="border-top: 4px solid var(--accent-2);">
-                <h4>Außerhalb des Felds</h4>
-                <p>Community pflegen, Content liefern, Teamkultur stärken und sichtbar bleiben.</p>
-            </div>
-            <div class="card">
-                <h4>Loadout & Auftreten</h4>
-                <p>Einheitlicher Look, sinnvolle Ausrüstung und ein Setup, das im Spiel funktioniert.</p>
-            </div>
         </div>
       </section>
     </div>
@@ -384,9 +367,9 @@
   <footer class="footer container">
     <div class="footer-box">
       <div class="footer-links">
-        <a href="#" class="tab-link" data-tab="home">Startseite</a>
-        <a href="#" class="tab-link" data-tab="team">Team</a>
-        <a href="#" class="tab-link" data-tab="impressum">Impressum</a>
+        <a class="tab-link" data-tab="home">Startseite</a>
+        <a class="tab-link" data-tab="team">Team</a>
+        <a class="tab-link" data-tab="impressum">Impressum</a>
       </div>
       <div style="text-align: right;">
         <div style="font-weight: 800; color: var(--text);">die Ragebaiters</div>
@@ -400,23 +383,38 @@
   </div>
 
   <script>
-    document.querySelectorAll('.tab-link').forEach(link => {
-      link.addEventListener('click', (e) => {
-        const href = link.getAttribute('href');
-        if (href && !href.startsWith('#') && link.getAttribute('target') === '_blank') return;
-        
-        e.preventDefault();
-        const tab = link.getAttribute('data-tab');
-        if(!tab) return;
-
+    function switchTab(tabId) {
+      const targetPage = document.getElementById('tab-' + tabId);
+      if (targetPage) {
         document.querySelectorAll('.tab-page').forEach(page => page.classList.remove('active'));
         document.querySelectorAll('.tab-link').forEach(l => l.classList.remove('active'));
         
-        const targetPage = document.getElementById('tab-' + tab);
-        if(targetPage) {
-          targetPage.classList.add('active');
-          document.querySelectorAll(`.tab-link[data-tab="${tab}"]`).forEach(l => l.classList.add('active'));
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+        targetPage.classList.add('active');
+        document.querySelectorAll(`.tab-link[data-tab="${tabId}"]`).forEach(l => l.classList.add('active'));
+        
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    document.querySelectorAll('.tab-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        const tab = link.getAttribute('data-tab');
+        if (tab) {
+          e.preventDefault();
+          switchTab(tab);
+        }
+      });
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        const href = this.getAttribute('href');
+        if (href !== "#" && !this.hasAttribute('data-tab')) {
+          e.preventDefault();
+          const targetEl = document.querySelector(href);
+          if (targetEl) {
+            targetEl.scrollIntoView({ behavior: 'smooth' });
+          }
         }
       });
     });
