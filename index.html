@@ -66,7 +66,6 @@
       display: block;
     }
 
-    /* GLOBALES LINK-STYLING (Grüne Buttons) */
     a {
       color: #000 !important;
       text-decoration: none;
@@ -212,7 +211,6 @@
 
     .footer { padding: 60px 0; border-top: 1px solid var(--line); margin-top: 80px; color: var(--muted); font-size: 0.95rem; }
     .footer-box { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 30px; }
-    .footer-links { display: flex; gap: 12px; flex-wrap: wrap; }
 
     .final-credit {
       text-align: center;
@@ -272,7 +270,6 @@
 
             <div style="display: flex; gap: 15px; flex-wrap: wrap;">
               <a class="tab-link" data-tab="team" style="padding: 16px 32px;">Die Einheit ansehen</a>
-              <a href="#about" style="padding: 16px 32px;">Unsere Philosophie</a>
             </div>
           </div>
         </div>
@@ -369,8 +366,18 @@
       <section class="section">
         <h2>Impressum</h2>
         <div class="card">
-          <p>die Ragebaiters Airsoft Team<br>Kontakt: Ragebaiters@gmx.de</p>
-          <p>Michael Scholz<br>Höhrer straße 11<br>56179 Vallendarr</p>
+          <h3 style="color: var(--accent);">Angaben gemäß § 5 TMG</h3>
+          <p><strong>Teamname:</strong> die Ragebaiters Airsoft Team</p>
+          <p><strong>Postanschrift:</strong><br>
+          Michael Scholz<br>
+          Höhrer Straße 11<br>
+          56179 Vallendar</p>
+          <p><strong>Kontakt:</strong><br>
+          E-Mail: Ragebaiters@gmx.de</p>
+          <h3 style="color: var(--accent); margin-top: 20px;">Verantwortlich für den Inhalt</h3>
+          <p>Michael Scholz<br>
+          Höhrer Straße 11<br>
+          56179 Vallendar</p>
         </div>
       </section>
     </div>
@@ -387,7 +394,7 @@
 
   <footer class="footer container">
     <div class="footer-box">
-      <div class="footer-links">
+      <div class="nav-links">
         <a class="tab-link" data-tab="home">Startseite</a>
         <a class="tab-link" data-tab="team">Team</a>
         <a class="tab-link" data-tab="impressum">Impressum</a>
@@ -409,10 +416,8 @@
       if (targetPage) {
         document.querySelectorAll('.tab-page').forEach(page => page.classList.remove('active'));
         document.querySelectorAll('.tab-link').forEach(l => l.classList.remove('active'));
-        
         targetPage.classList.add('active');
         document.querySelectorAll(`.tab-link[data-tab="${tabId}"]`).forEach(l => l.classList.add('active'));
-        
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
@@ -423,19 +428,6 @@
         if (tab) {
           e.preventDefault();
           switchTab(tab);
-        }
-      });
-    });
-
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener('click', function (e) {
-        const href = this.getAttribute('href');
-        if (href !== "#" && !this.hasAttribute('data-tab')) {
-          e.preventDefault();
-          const targetEl = document.querySelector(href);
-          if (targetEl) {
-            targetEl.scrollIntoView({ behavior: 'smooth' });
-          }
         }
       });
     });
