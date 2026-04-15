@@ -48,6 +48,7 @@
       margin: 0 auto;
     }
 
+    /* Banner Bereich */
     .top-banner {
       width: min(calc(100% - 24px), 1400px);
       margin: 14px auto 0;
@@ -66,7 +67,7 @@
       display: block;
     }
 
-    /* GLOBALES LINK-STYLING (Grüne Buttons) */
+    /* GLOBALES LINK-STYLING */
     a {
       color: #000 !important;
       text-decoration: none;
@@ -201,14 +202,8 @@
     }
 
     .section { padding: 60px 0; }
-    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
     .card { padding: 40px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); display: flex; flex-direction: column; gap: 15px; }
-    .card h4 { color: var(--accent); margin: 0; font-size: 1.4rem; font-weight: 800; }
     .split { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 40px; }
-
-    .list { display: grid; gap: 24px; margin-top: 20px; }
-    .list-item { display: flex; gap: 20px; align-items: flex-start; padding-top: 24px; border-top: 1px solid var(--line); }
-    .dot { width: 12px; height: 12px; border-radius: 3px; background: var(--accent); margin-top: 8px; flex: 0 0 auto; transform: rotate(45deg); }
 
     .footer { padding: 60px 0; border-top: 1px solid var(--line); margin-top: 80px; color: var(--muted); font-size: 0.95rem; }
     .footer-box { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 30px; }
@@ -225,7 +220,7 @@
     }
 
     @media (max-width: 1000px) {
-      .hero-grid, .grid-3, .split { grid-template-columns: 1fr; }
+      .hero-grid, .split { grid-template-columns: 1fr; }
       .nav { flex-direction: column; gap: 20px; text-align: center; }
       .nav-links { justify-content: center; }
     }
@@ -264,43 +259,16 @@
           <div class="hero-content">
             <span class="eyebrow">Professional Tactical Unit</span>
             <h2>Keine Kompromisse.<br>Nur Koordination.</h2>
-            <p style="margin-bottom: 0;">Willkommen bei den <strong>Ragebaiters</strong>. Wir stehen für taktische Exzellenz, visuelle Konsistenz und kompromisslose Fairness im Airsoft.</p>
+            <p>Willkommen bei den <strong>Ragebaiters</strong>. Wir stehen für taktische Exzellenz, visuelle Konsistenz und kompromisslose Fairness im Airsoft.</p>
             
             <div style="padding: 16px 20px; background: rgba(183,255,60,0.05); border-left: 3px solid var(--accent); border-radius: 8px; font-size: 1.1rem; color: var(--text);">
-              Wir sind ein Airsoft-Team aus dem Kreis Mayen-Koblenz. Wir spielen hauptsächlich auf der Area M. Bei Interesse schreib uns gerne an, wir freuen uns!
+              Wir sind ein Airsoft-Team aus dem Kreis Mayen-Koblenz. Wir spielen hauptsächlich auf der Area M. Bei Interesse schreib uns gerne an!
             </div>
 
             <div style="display: flex; gap: 15px; flex-wrap: wrap;">
               <a class="tab-link" data-tab="team" style="padding: 16px 32px;">Die Einheit ansehen</a>
-              <a href="#about" style="padding: 16px 32px;">Unsere Philosophie</a>
             </div>
           </div>
-        </div>
-      </section>
-
-      <section id="about" class="section">
-        <div class="split">
-          <article class="card">
-            <h3 style="margin:0; color: var(--accent);">Was uns ausmacht</h3>
-            <div class="list">
-              <div class="list-item">
-                <span class="dot"></span>
-                <div><strong>Kommunikation unter Druck</strong><br><span style="color: var(--muted);">Kurze, klare Infos. Gute Calls entscheiden oft mehr als rohe Geschwindigkeit.</span></div>
-              </div>
-              <div class="list-item">
-                <span class="dot"></span>
-                <div><strong>Sauberes Teamplay</strong><br><span style="color: var(--muted);">Pushes, Winkel, Absicherung und Rollenverteilung greifen ineinander.</span></div>
-              </div>
-              <div class="list-item">
-                <span class="dot"></span>
-                <div><strong>Präsenz mit Wiedererkennungswert</strong><br><span style="color: var(--muted);">Ein Team soll nicht nur spielen, sondern auch als Marke sichtbar auftreten.</span></div>
-              </div>
-            </div>
-          </article>
-          <article class="card">
-            <h3 style="margin:0; color: var(--accent);">Unser Anspruch</h3>
-            <p>Gute Spiele entstehen aus Vorbereitung und Verlässlichkeit. Wir wollen einen professionellen Eindruck hinterlassen, bei dem jeder sofort versteht, wofür wir stehen.</p>
-          </article>
         </div>
       </section>
     </div>
@@ -320,6 +288,10 @@
 
         <h3 style="margin: 60px 0 20px; color: var(--text);">Operatoren</h3>
         <div class="member-grid">
+          <div class="member-card">
+            <div class="role-badge">Sniper</div>
+            <div style="font-size: 1.4rem; font-weight: 800;">sneiper0</div>
+          </div>
           <div class="member-card">
             <div class="role-badge">Medic</div>
             <div style="font-size: 1.4rem; font-weight: 800;">MundMBrothers</div>
@@ -348,8 +320,20 @@
       <section class="section">
         <h2>Impressum</h2>
         <div class="card">
-          <p>die Ragebaiters Airsoft Team<br>Kontakt: Ragebaiters@gmx.de</p>
-          <p>Michael Scholz<br>Höhrer straße 11<br>56179 Vallendarr</p>
+          <h3>Angaben gemäß § 5 TMG</h3>
+          <p>die Ragebaiters Airsoft Team</p>
+          
+          <p><strong>Vertreten durch:</strong><br>
+          Michael Scholz</p>
+
+          <p><strong>Kontakt:</strong><br>
+          Anschrift: Höhrer straße 11, 56179 Vallendar<br>
+          E-Mail: Ragebaiters@gmx.de</p>
+
+          <p><strong>Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV:</strong><br>
+          Michael Scholz<br>
+          Höhrer straße 11<br>
+          56179 Vallendar</p>
         </div>
       </section>
     </div>
@@ -358,7 +342,8 @@
       <section class="section">
         <h2>Datenschutz</h2>
         <div class="card">
-          <p>Diese Seite dient rein informativen Zwecken. Es werden keine personenbezogenen Daten erhoben.</p>
+          <p>Diese Seite dient rein informativen Zwecken. Es werden keine personenbezogenen Daten über ein Kontaktformular oder Tracking-Cookies erhoben.</p>
+          <p>Die Nutzung unserer Webseite ist in der Regel ohne Angabe personenbezogener Daten möglich.</p>
         </div>
       </section>
     </div>
@@ -402,19 +387,6 @@
         if (tab) {
           e.preventDefault();
           switchTab(tab);
-        }
-      });
-    });
-
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener('click', function (e) {
-        const href = this.getAttribute('href');
-        if (href !== "#" && !this.hasAttribute('data-tab')) {
-          e.preventDefault();
-          const targetEl = document.querySelector(href);
-          if (targetEl) {
-            targetEl.scrollIntoView({ behavior: 'smooth' });
-          }
         }
       });
     });
