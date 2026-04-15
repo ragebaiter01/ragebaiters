@@ -67,7 +67,7 @@
       display: block;
     }
 
-    /* GLOBALES LINK-STYLING (Grün ausgefüllte Boxen) */
+    /* GLOBALES LINK-STYLING */
     a {
       color: #000 !important;
       text-decoration: none;
@@ -213,6 +213,16 @@
     .footer { padding: 60px 0; border-top: 1px solid var(--line); margin-top: 80px; color: var(--muted); font-size: 0.95rem; }
     .footer-box { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 30px; }
     .footer-links { display: flex; gap: 12px; flex-wrap: wrap; }
+
+    .final-credit {
+      text-align: center;
+      padding: 20px 0 40px;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.2);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
 
     @media (max-width: 1000px) {
       .hero-grid, .grid-3, .split { grid-template-columns: 1fr; }
@@ -377,6 +387,10 @@
     </div>
   </footer>
 
+  <div class="final-credit">
+    Made by sneiper0
+  </div>
+
   <script>
     document.querySelectorAll('.tab-link').forEach(link => {
       link.addEventListener('click', (e) => {
@@ -401,8 +415,4 @@
     });
   </script>
 </body>
-</html>
-  </script>
-</body>
-</html>
 </html>
