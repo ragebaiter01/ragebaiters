@@ -206,9 +206,11 @@
       <p id="modalDesc" style="color: var(--muted); font-size: 1.1rem;"></p>
     </div>
   </div>
+
   <div class="top-banner">
     <img src="banner.png" alt="die Ragebaiters Banner" />
   </div>
+
   <header class="container">
     <nav class="nav">
       <div style="font-weight: 900; font-size: 1.6rem; color: var(--text);">die Ragebaiters</div>
@@ -228,6 +230,7 @@
       <section class="hero">
         <div class="hero-grid">
           <div class="hero-logo-large"><img src="logo.png" alt="Logo" /></div>
+          
           <div class="hero-content">
             <span class="eyebrow">Professional Tactical Unit</span>
             <h2 style="font-weight: 900;">Keine Kompromisse.<br>Nur Koordination.</h2>
@@ -310,7 +313,9 @@
             <div class="role-badge">Techniker</div>
             <div style="font-size: 1.4rem; font-weight: 800;">Wolfgang</div>
           </div>
-        </div>
+
+          
+          </div>
       </section>
     </div>
 
@@ -333,11 +338,7 @@
   <script>
     /**************************************************************************
      * ###################################################################### *
-     * ###################################################################### *
-     * ##                                                                  ## *
      * ##          T E A M - I N F O S   B E A R B E I T E N              ## *
-     * ##                                                                  ## *
-     * ###################################################################### *
      * ###################################################################### *
      **************************************************************************/
     const memberData = {
@@ -375,13 +376,19 @@
         img: "logo.png", 
         role: "Techniker", 
         desc: "Der Mann für das Grobe und Feine. Hält die Markierer am Laufen." 
+      },
+
+      /* #######################################################################
+         ##  Y O N T E   -   D A T E N   (Bei Bedarf Kommentar /* entfernen)
+         #######################################################################
+      */
+      "Yonte": { 
+        img: "logo.png", 
+        role: "Techniker", 
+        desc: "Zusätzliche technische Unterstützung für das Team." 
       }
+      // #######################################################################
     };
-    /**************************************************************************
-     * ###################################################################### *
-     * ##                    ENDE DER TEAM-INFOS                           ## *
-     * ###################################################################### *
-     **************************************************************************/
 
     function openMember(name) {
       const data = memberData[name];
