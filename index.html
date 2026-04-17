@@ -143,8 +143,21 @@
 
     .member-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin-top: 20px; }
     .member-card {
-      padding: 30px 15px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 25px 15px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
       text-align: center; transition: 0.3s ease; cursor: pointer;
+    }
+
+    .role-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      background: var(--accent);
+      color: #000;
+      border-radius: 999px;
+      font-size: 0.65rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      letter-spacing: 0.03em;
     }
 
     .contact-box {
@@ -173,7 +186,6 @@
     }
     .modal-img { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent); margin-bottom: 20px; }
 
-    /* DESKTOP LOOK */
     @media (min-width: 1000px) {
       .nav { flex-direction: row; justify-content: space-between; padding: 14px 24px; }
       .nav-links { overflow: visible; width: auto; }
@@ -183,6 +195,7 @@
       .hero-logo-large img { max-width: 450px; }
       .split { grid-template-columns: 1fr 1fr; }
       .member-grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+      .role-badge { font-size: 0.7rem; padding: 4px 12px; }
       a { font-size: 0.85rem; }
     }
 
@@ -197,7 +210,7 @@
     <div class="modal-content">
       <span class="modal-close" onclick="closeModal()" style="position:absolute; right:20px; top:10px; font-size:2.5rem; cursor:pointer;">&times;</span>
       <img id="modalImg" src="" alt="Profile" class="modal-img">
-      <div id="modalRole" style="display:inline-block; padding:4px 12px; background:var(--accent); color:#000; border-radius:999px; font-size:0.7rem; font-weight:800; text-transform:uppercase; margin-bottom:15px;"></div>
+      <div id="modalRole" class="role-badge"></div>
       <h2 id="modalName" style="margin: 10px 0;"></h2>
       <p id="modalDesc" style="color: var(--muted); font-size: 1.1rem;"></p>
     </div>
@@ -281,21 +294,39 @@
         
         <h3 style="color: var(--accent); margin-bottom: 20px;">Teamführung</h3>
         <div class="member-grid" style="grid-template-columns: 1fr;">
-          <div class="member-card" style="border: 2px solid var(--accent);" onclick="openMember('Yotzek')">
-            <div style="font-size: 0.7rem; font-weight: 800; background: var(--accent); color:#000; padding:2px 10px; border-radius:10px; display:inline-block; margin-bottom:10px;">TEAMFÜHRER</div>
-            <div style="font-size: 1.8rem; font-weight: 900;">Yotzek</div>
+          <div class="member-card" style="border: 2px solid var(--accent);" onclick="openMember('Yotzek (Ben)')">
+            <div class="role-badge">Teamführer</div>
+            <div style="font-size: 1.8rem; font-weight: 900;">Yotzek (Ben)</div>
           </div>
         </div>
 
         <h3 style="margin: 40px 0 20px;">Operatoren</h3>
         <div class="member-grid">
-          <div class="member-card" onclick="openMember('sneiper0 (Jason)')"><div>sneiper0</div></div>
-          <div class="member-card" onclick="openMember('MundMBrothers (Michael)')"><div>Michael</div></div>
-          <div class="member-card" onclick="openMember('Disccave (Nils)')"><div>Nils</div></div>
-          <div class="member-card" onclick="openMember('Nathan Goldstein (Nathan)')"><div>Nathan</div></div>
-          <div class="member-card" onclick="openMember('Gemeral Richard (Riccardo)')"><div>Riccardo</div></div>
-          <div class="member-card" onclick="openMember('Wolfgang')"><div>Wolfgang</div></div>
+          <div class="member-card" onclick="openMember('sneiper0 (Jason)')">
+            <div class="role-badge">Sniper</div>
+            <div style="font-weight:800;">sneiper0 (Jason)</div>
           </div>
+          <div class="member-card" onclick="openMember('MundMbrothers (Michael)')">
+            <div class="role-badge">Medic</div>
+            <div style="font-weight:800;">MundMbrothers (Michael)</div>
+          </div>
+          <div class="member-card" onclick="openMember('Disccave (Nils)')">
+            <div class="role-badge">Breacher</div>
+            <div style="font-weight:800;">Disccave (Nils)</div>
+          </div>
+          <div class="member-card" onclick="openMember('Nathan Goldstein (Nathan)')">
+            <div class="role-badge">Support</div>
+            <div style="font-weight:800;">Nathan Goldstein (Nathan)</div>
+          </div>
+          <div class="member-card" onclick="openMember('Gemeral Richard (Riccardo)')">
+            <div class="role-badge">Breacher</div>
+            <div style="font-weight:800;">Gemeral Richard (Riccardo)</div>
+          </div>
+          <div class="member-card" onclick="openMember('Wolfgang')">
+            <div class="role-badge">Techniker</div>
+            <div style="font-weight:800;">Wolfgang</div>
+          </div>
+        </div>
       </section>
     </div>
 
@@ -317,14 +348,13 @@
 
   <script>
     const memberData = {
-      "Yotzek": { img: "images/benf.png", role: "Teamführer", desc: "Ben koordiniert die Truppe und bewahrt selbst im Gefecht einen kühlen Kopf." },
+      "Yotzek (Ben)": { img: "images/benf.png", role: "Teamführer", desc: "Ben koordiniert die Truppe und bewahrt selbst im Gefecht einen kühlen Kopf." },
       "sneiper0 (Jason)": { img: "images/jason.png", role: "Sniper", desc: "Präzisionsschütze der Ragebaiters." },
-      "MundMBrothers (Michael)": { img: "images/michi2.png", role: "Medic", desc: "Sorgt für die Einsatzfähigkeit des Teams." },
+      "MundMbrothers (Michael)": { img: "images/michi2.png", role: "Medic", desc: "Sorgt für die Einsatzfähigkeit des Teams." },
       "Disccave (Nils)": { img: "images/nils.png", role: "Breacher / OG", desc: "Einer der OGs. Experte für Improvisation." },
       "Nathan Goldstein (Nathan)": { img: "images/nathan.png", role: "Support", desc: "Gibt Feuerschutz mit hohem Munitionsdurchsatz." },
       "Gemeral Richard (Riccardo)": { img: "images/riccardo.png", role: "Breacher", desc: "Spezialist für CQB." },
-      "Wolfgang": { img: "images/wolfgang.png", role: "Techniker", desc: "Hält die Markierer am Laufen." },
-      "Yonte": { img: "images/yonte.png", role: "Techniker", desc: "Technische Unterstützung." }
+      "Wolfgang": { img: "images/wolfgang.png", role: "Techniker", desc: "Hält die Markierer am Laufen." }
     };
 
     function openMember(name) {
