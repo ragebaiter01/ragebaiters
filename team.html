@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Team | die Ragebaiters</title>
+  <link rel="icon" type="image/png" href="images/logo.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div id="memberModal" class="modal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeModal()" style="position:absolute; right:20px; top:10px; font-size:2.5rem; cursor:pointer;">&times;</span>
+      <img id="modalImg" src="" alt="Profile" class="modal-img">
+      <div id="modalRole" class="role-badge"></div>
+      <h2 id="modalName" style="margin: 10px 0;"></h2>
+      <p id="modalDesc" style="color: var(--muted); font-size: 1.1rem;"></p>
+    </div>
+  </div>
+
+  <div class="top-banner">
+    <img src="images/banner2.png" alt="die Ragebaiters Banner" />
+  </div>
+
+  <header class="container">
+    <nav class="nav">
+      <div style="font-weight: 900; font-size: 1.6rem;">die Ragebaiters</div>
+      <div class="nav-links">
+        <a href="index.html">Startseite</a>
+        <a class="active" href="team.html">Team</a>
+        <a href="impressum.html">Impressum</a>
+        <a href="https://www.youtube.com/@RagebaitersAS" target="_blank">YouTube</a>
+        <a href="https://www.instagram.com/die_ragebaiters/" target="_blank">Instagram</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="section">
+      <span class="eyebrow">Roster</span>
+      <h2 style="margin: 10px 0 40px;">Die Einheit</h2>
+
+      <h3 style="color: var(--accent); margin-bottom: 20px;">Teamführung</h3>
+      <div class="member-grid" style="grid-template-columns: 1fr;">
+        <div class="member-card" style="border: 2px solid var(--accent);" onclick="openMember('Yotzek (Ben)')">
+          <div class="role-badge">Teamführer</div>
+          <div style="font-size: 1.8rem; font-weight: 900;">Yotzek (Ben)</div>
+        </div>
+      </div>
+
+      <h3 style="margin: 40px 0 20px;">Operatoren</h3>
+      <div class="member-grid">
+        <div class="member-card" onclick="openMember('sneiper0 (Jason)')">
+          <div class="role-badge">Sniper</div>
+          <div style="font-weight:800;">sneiper0 (Jason)</div>
+        </div>
+        <div class="member-card" onclick="openMember('MundMbrothers (Michael)')">
+          <div class="role-badge">Medic</div>
+          <div style="font-weight:800;">MundMbrothers (Michael)</div>
+        </div>
+        <div class="member-card" onclick="openMember('Disccave (Nils)')">
+          <div class="role-badge">Breacher</div>
+          <div style="font-weight:800;">Disccave (Nils)</div>
+        </div>
+        <div class="member-card" onclick="openMember('Nathan Goldstein (Nathan)')">
+          <div class="role-badge">Support</div>
+          <div style="font-weight:800;">Nathan Goldstein (Nathan)</div>
+        </div>
+        <div class="member-card" onclick="openMember('Gemeral Richard (Riccardo)')">
+          <div class="role-badge">Breacher</div>
+          <div style="font-weight:800;">Gemeral Richard (Riccardo)</div>
+        </div>
+        <div class="member-card" onclick="openMember('Wolfgang')">
+          <div class="role-badge">Techniker</div>
+          <div style="font-weight:800;">Wolfgang</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer container">
+    <div style="font-weight: 800;">die Ragebaiters</div>
+    <div style="font-size: 0.8rem; opacity: 0.6;">Est. 2026 • Made by sneiper0</div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
