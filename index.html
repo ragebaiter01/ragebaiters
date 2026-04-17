@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>die Ragebaiters | Professional Airsoft Team</title>
+  <title>die Ragebaiters | Airsoft Team</title>
   
-  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="icon" type="image/png" href="images/logo.png">
   
   <style>
     :root {
@@ -45,9 +45,9 @@
     .container { width: min(calc(100% - 32px), var(--max)); margin: 0 auto; }
 
     .top-banner {
-      width: min(calc(100% - 24px), 1400px);
-      margin: 14px auto 0;
-      border-radius: 22px;
+      width: min(calc(100% - 16px), 1400px);
+      margin: 8px auto 0;
+      border-radius: 18px;
       overflow: hidden;
       border: 1px solid var(--line);
       box-shadow: var(--shadow);
@@ -67,65 +67,45 @@
       font-weight: 800;
       transition: all 0.25s ease;
       text-transform: uppercase;
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       letter-spacing: 0.02em;
       cursor: pointer;
+      white-space: nowrap;
     }
 
-    a:hover {
-      background: var(--accent-2);
-      border-color: var(--accent-2);
-      box-shadow: 0 0 20px rgba(183,255,60,0.4);
-      transform: translateY(-2px);
-    }
-
-    header { padding: 20px 0; }
+    header { padding: 10px 0; }
+    
     .nav {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 14px 24px;
+      flex-direction: column;
+      gap: 15px;
+      padding: 16px;
       border: 1px solid var(--line);
       background: rgba(255,255,255,0.03);
       backdrop-filter: blur(12px);
       border-radius: 18px;
       position: sticky;
-      top: 14px;
+      top: 10px;
       z-index: 100;
     }
 
-    .nav-links { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-
-    .hero { padding: 80px 0; }
-    .hero-grid { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 50px; align-items: center; }
-
-    .hero-logo-large {
-      position: relative;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      animation: float 6s ease-in-out infinite;
+    .nav-links { 
+      display: flex; 
+      gap: 8px; 
+      overflow-x: auto; 
+      width: 100%;
+      padding-bottom: 4px;
+      scrollbar-width: none;
     }
+    .nav-links::-webkit-scrollbar { display: none; }
 
-    .hero-logo-large::before {
-      content: '';
-      position: absolute;
-      width: 120%;
-      height: 120%;
-      background: radial-gradient(circle, rgba(183,255,60,0.2) 0%, transparent 70%);
-      border-radius: 50%;
-      filter: blur(20px);
-      z-index: -1;
-    }
+    .hero { padding: 40px 0; }
+    .hero-grid { display: grid; grid-template-columns: 1fr; gap: 30px; align-items: center; }
 
-    .hero-logo-large img { width: 100%; max-width: 450px; }
+    .hero-logo-large { display: flex; justify-content: center; }
+    .hero-logo-large img { width: 100%; max-width: 300px; }
 
-    @keyframes float {
-      0%, 100% { transform: translateY(0px); }
-      50% { transform: translateY(-20px); }
-    }
-
-    .hero-content { display: flex; flex-direction: column; gap: 24px; }
+    .hero-content { display: flex; flex-direction: column; gap: 20px; text-align: center; }
 
     .eyebrow {
       display: inline-flex;
@@ -134,10 +114,59 @@
       border: 1px solid rgba(183,255,60,0.3);
       background: rgba(183,255,60,0.1);
       color: var(--accent);
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       text-transform: uppercase;
       font-weight: 700;
       width: fit-content;
+      margin: 0 auto;
+    }
+
+    h2 { font-size: clamp(1.8rem, 8vw, 3rem); font-weight: 900; line-height: 1.2; }
+
+    .info-box {
+      padding: 20px;
+      background: rgba(183,255,60,0.05);
+      border-left: 3px solid var(--accent);
+      border-radius: 8px;
+      font-size: 1.05rem;
+      text-align: left;
+    }
+
+    .section { padding: 40px 0; }
+    .card { padding: 30px 20px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+    
+    .split { display: grid; grid-template-columns: 1fr; gap: 30px; margin-top: 30px; }
+    
+    .list { display: grid; gap: 24px; margin-top: 20px; }
+    .list-item { display: flex; gap: 15px; padding-top: 20px; border-top: 1px solid var(--line); align-items: flex-start; }
+    .dot { width: 10px; height: 10px; background: var(--accent); transform: rotate(45deg); margin-top: 8px; flex: 0 0 auto; }
+
+    .member-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin-top: 20px; }
+    .member-card {
+      padding: 25px 15px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+      text-align: center; transition: 0.3s ease; cursor: pointer;
+    }
+
+    .role-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      background: var(--accent);
+      color: #000;
+      border-radius: 999px;
+      font-size: 0.65rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      letter-spacing: 0.03em;
+    }
+
+    .contact-box {
+      margin-top: 30px;
+      padding: 30px 20px;
+      background: rgba(183,255,60,0.06);
+      border: 1px solid rgba(183,255,60,0.25);
+      border-radius: var(--radius);
+      text-align: center;
     }
 
     .modal {
@@ -145,75 +174,55 @@
       position: fixed;
       z-index: 1000;
       left: 0; top: 0; width: 100%; height: 100%;
-      background-color: rgba(0,0,0,0.9);
+      background-color: rgba(0,0,0,0.95);
       backdrop-filter: blur(10px);
       align-items: center; justify-content: center; padding: 20px;
     }
     .modal-content {
       background: var(--bg-soft);
-      border: 1px solid var(--line);
       border-radius: var(--radius);
-      max-width: 600px; width: 100%; padding: 40px;
+      max-width: 500px; width: 100%; padding: 40px 20px;
       position: relative; text-align: center;
-      box-shadow: var(--shadow);
     }
-    .modal-close { position: absolute; top: 20px; right: 20px; color: var(--text); font-size: 2rem; cursor: pointer; }
-    .modal-img { width: 180px; height: 180px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent); margin-bottom: 20px; }
+    .modal-img { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent); margin-bottom: 20px; }
 
-    .section { padding: 60px 0; }
-    .card { padding: 40px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
-    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 40px; }
-    .list { display: grid; gap: 24px; margin-top: 20px; }
-    .list-item { display: flex; gap: 20px; align-items: flex-start; padding-top: 24px; border-top: 1px solid var(--line); }
-    .dot { width: 12px; height: 12px; border-radius: 3px; background: var(--accent); margin-top: 8px; flex: 0 0 auto; transform: rotate(45deg); }
-
-    .member-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 24px; margin-top: 20px; }
-    .member-card {
-      padding: 40px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
-      text-align: center; transition: 0.3s ease; cursor: pointer;
-    }
-    .member-card:hover { border-color: var(--accent); transform: translateY(-5px); background: var(--panel-strong); }
-    .member-card.lead { border: 2px solid var(--accent); }
-    
-    .role-badge {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 999px;
-      background: var(--accent);
-      color: #000;
-      font-size: 0.75rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      margin-bottom: 15px;
-      letter-spacing: 0.05em;
+    @media (min-width: 1000px) {
+      .nav { flex-direction: row; justify-content: space-between; padding: 14px 24px; }
+      .nav-links { overflow: visible; width: auto; }
+      .hero-grid { grid-template-columns: 0.8fr 1.2fr; text-align: left; }
+      .hero-content { text-align: left; align-items: flex-start; }
+      .eyebrow { margin: 0; }
+      .hero-logo-large img { max-width: 450px; }
+      .split { grid-template-columns: 1fr 1fr; }
+      .member-grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+      .role-badge { font-size: 0.7rem; padding: 4px 12px; }
+      a { font-size: 0.85rem; }
     }
 
-    .footer { padding: 60px 0; border-top: 1px solid var(--line); margin-top: 80px; color: var(--muted); text-align: center; }
+    .footer { padding: 40px 0; border-top: 1px solid var(--line); margin-top: 60px; color: var(--muted); text-align: center; }
     .tab-page { display: none; }
     .tab-page.active { display: block; }
-
-    @media (max-width: 1000px) { .hero-grid, .split { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
 
   <div id="memberModal" class="modal">
     <div class="modal-content">
-      <span class="modal-close" onclick="closeModal()">&times;</span>
+      <span class="modal-close" onclick="closeModal()" style="position:absolute; right:20px; top:10px; font-size:2.5rem; cursor:pointer;">&times;</span>
       <img id="modalImg" src="" alt="Profile" class="modal-img">
       <div id="modalRole" class="role-badge"></div>
-      <h2 id="modalName" style="font-size: 2.2rem; margin: 10px 0; font-weight: 900;"></h2>
+      <h2 id="modalName" style="margin: 10px 0;"></h2>
       <p id="modalDesc" style="color: var(--muted); font-size: 1.1rem;"></p>
     </div>
   </div>
 
   <div class="top-banner">
-    <img src="banner2.png" alt="die Ragebaiters Banner" />
+    <img src="images/banner.png" alt="die Ragebaiters Banner" />
   </div>
 
   <header class="container">
     <nav class="nav">
-      <div style="font-weight: 900; font-size: 1.6rem; color: var(--text);">die Ragebaiters</div>
+      <div style="font-weight: 900; font-size: 1.6rem;">die Ragebaiters</div>
       <div class="nav-links">
         <a class="tab-link active" data-tab="home">Startseite</a>
         <a class="tab-link" data-tab="team">Team</a>
@@ -229,20 +238,18 @@
     <div id="tab-home" class="tab-page active">
       <section class="hero">
         <div class="hero-grid">
-          <div class="hero-logo-large"><img src="logo.png" alt="Logo" /></div>
-          
+          <div class="hero-logo-large"><img src="images/logo.png" alt="Logo" /></div>
           <div class="hero-content">
-            <span class="eyebrow">Professional Tactical Unit</span>
-            <h2 style="font-weight: 900;">Keine Kompromisse.<br>Nur Koordination.</h2>
-            <p>Willkommen bei den <strong>Ragebaiters</strong>. Wir stehen für taktische Exzellenz, visuelle Konsistenz und kompromisslose Fairness im Airsoft.</p>
+            <span class="eyebrow">Anfängerfreundliches Airsoft-Team</span>
+            <h2>Kein Vorwissen nötig.<br>Nur Lust auf Teamplay.</h2>
+            <p>Willkommen bei den <strong>Ragebaiters</strong>. Wir stehen für Spaß, Zusammenhalt und gutes Teamplay – egal ob du gerade erst anfängst oder schon etwas Erfahrung mitbringst.</p>
             
-            <div style="padding: 16px 20px; background: rgba(183,255,60,0.05); border-left: 3px solid var(--accent); border-radius: 8px; font-size: 1.1rem; color: var(--text);">
-              Wir sind ein motiviertes Airsoft-Team mit Fokus auf Taktik, Teamwork und sauberes Gameplay.<br>
-              Professionell im Spiel – entspannt im Umgang. Bei uns findest du sowohl Struktur als auch Humor.<br><br>
-              Wir kommen aus dem Kreis Mayen-Koblenz und spielen hauptsächlich auf der Area M. Bei Interesse schreib uns gerne an!
+            <div class="info-box">
+              Wir sind ein entspanntes Airsoft-Team mit Fokus auf Teamwork, gegenseitige Unterstützung und fair gespieltes Gameplay.<br><br>
+              Neueinsteiger sind bei uns herzlich willkommen – wir helfen dir beim Start und zeigen dir alles, was du wissen musst.<br><br>
+              Wir kommen aus dem Kreis Mayen-Koblenz und spielen hauptsächlich auf der Area M. Bei Interesse schreib uns einfach an!
             </div>
-
-            <a class="tab-link" data-tab="team" style="padding: 16px 32px;">Die Einheit ansehen</a>
+            <a class="tab-link" data-tab="team" style="padding: 16px 32px; margin-top:10px;">Die Einheit ansehen</a>
           </div>
         </div>
       </section>
@@ -253,22 +260,28 @@
             <h3 style="margin:0; color: var(--accent);">Was uns ausmacht</h3>
             <div class="list">
               <div class="list-item">
-                <span class="dot"></span>
-                <div><strong>Kommunikation unter Druck</strong><br><span style="color: var(--muted);">Kurze, klare Infos. Gute Calls entscheiden oft mehr als rohe Geschwindigkeit.</span></div>
+                <div class="dot"></div>
+                <div><strong>Anfänger willkommen</strong><br><span style="color: var(--muted);">Kein Vorwissen nötig. Wir nehmen uns Zeit, neue Gesichter einzuführen und alles zu erklären.</span></div>
               </div>
               <div class="list-item">
-                <span class="dot"></span>
-                <div><strong>Sauberes Teamplay</strong><br><span style="color: var(--muted);">Pushes, Winkel, Absicherung und Rollenverteilung greifen ineinander.</span></div>
+                <div class="dot"></div>
+                <div><strong>Entspannte Atmosphäre</strong><br><span style="color: var(--muted);">Bei uns steht der Spaß im Vordergrund. Fehler passieren – wichtig ist, dass wir gemeinsam lernen.</span></div>
               </div>
               <div class="list-item">
-                <span class="dot"></span>
-                <div><strong>Präsenz mit Wiedererkennungswert</strong><br><span style="color: var(--muted);">Ein Team soll nicht nur spielen, sondern auch als Marke sichtbar auftreten.</span></div>
+                <div class="dot"></div>
+                <div><strong>Fairer Umgang</strong><br><span style="color: var(--muted);">Respekt und Fairplay sind für uns selbstverständlich – sowohl im Team als auch gegenüber anderen.</span></div>
               </div>
             </div>
           </article>
+
           <article class="card">
             <h3 style="margin:0; color: var(--accent);">Unser Anspruch</h3>
-            <p>Gute Spiele entstehen aus Vorbereitung und Verlässlichkeit. Wir wollen einen professionellen Eindruck hinterlassen, bei dem jeder sofort versteht, wofür wir stehen.</p>
+            <p>Wir wollen eine Gruppe sein, in der sich jeder wohlfühlt – egal ob Neuling oder erfahrener Spieler. Wer Lust auf Airsoft hat, ist bei uns richtig. Kein Leistungsdruck, keine komischen Blicke. Einfach mitspielen.</p>
+            <div class="contact-box">
+              <h3 style="margin:0; color: var(--accent);">Interesse? Meld dich!</h3>
+              <p>Schreib uns jederzeit – wir freuen uns!</p>
+              <a href="mailto:Ragebaiters@gmx.de" style="background:transparent; border:1px solid var(--accent); color:var(--accent)!important; text-transform:none; width:100%; text-align:center;">✉ Ragebaiters@gmx.de</a>
+            </div>
           </article>
         </div>
       </section>
@@ -277,45 +290,43 @@
     <div id="tab-team" class="tab-page">
       <section class="section">
         <span class="eyebrow">Roster</span>
-        <h2 style="font-size: 3.5rem; margin: 10px 0 40px; font-weight: 900;">Die Einheit</h2>
+        <h2 style="margin: 10px 0 40px;">Die Einheit</h2>
         
         <h3 style="color: var(--accent); margin-bottom: 20px;">Teamführung</h3>
         <div class="member-grid" style="grid-template-columns: 1fr;">
-          <div class="member-card lead" onclick="openMember('Yotzek')">
+          <div class="member-card" style="border: 2px solid var(--accent);" onclick="openMember('Yotzek (Ben)')">
             <div class="role-badge">Teamführer</div>
-            <div style="font-size: 2rem; font-weight: 900;">Yotzek</div>
+            <div style="font-size: 1.8rem; font-weight: 900;">Yotzek (Ben)</div>
           </div>
         </div>
 
-        <h3 style="margin: 60px 0 20px; font-weight: 900;">Operatoren</h3>
+        <h3 style="margin: 40px 0 20px;">Operatoren</h3>
         <div class="member-grid">
           <div class="member-card" onclick="openMember('sneiper0 (Jason)')">
             <div class="role-badge">Sniper</div>
-            <div style="font-size: 1.4rem; font-weight: 800;">sneiper0 (Jason)</div>
+            <div style="font-weight:800;">sneiper0 (Jason)</div>
           </div>
-          <div class="member-card" onclick="openMember('MundMBrothers (Michael)')">
+          <div class="member-card" onclick="openMember('MundMbrothers (Michael)')">
             <div class="role-badge">Medic</div>
-            <div style="font-size: 1.4rem; font-weight: 800;">MundMBrothers (Michael)</div>
+            <div style="font-weight:800;">MundMbrothers (Michael)</div>
           </div>
           <div class="member-card" onclick="openMember('Disccave (Nils)')">
             <div class="role-badge">Breacher</div>
-            <div style="font-size: 1.4rem; font-weight: 800;">Disccave (Nils)</div>
+            <div style="font-weight:800;">Disccave (Nils)</div>
           </div>
           <div class="member-card" onclick="openMember('Nathan Goldstein (Nathan)')">
             <div class="role-badge">Support</div>
-            <div style="font-size: 1.4rem; font-weight: 800;">Nathan Goldstein (Nathan)</div>
+            <div style="font-weight:800;">Nathan Goldstein (Nathan)</div>
           </div>
           <div class="member-card" onclick="openMember('Gemeral Richard (Riccardo)')">
             <div class="role-badge">Breacher</div>
-            <div style="font-size: 1.4rem; font-weight: 800;">Gemeral Richard (Riccardo)</div>
+            <div style="font-weight:800;">Gemeral Richard (Riccardo)</div>
           </div>
           <div class="member-card" onclick="openMember('Wolfgang')">
             <div class="role-badge">Techniker</div>
-            <div style="font-size: 1.4rem; font-weight: 800;">Wolfgang</div>
+            <div style="font-weight:800;">Wolfgang</div>
           </div>
-
-          
-          </div>
+        </div>
       </section>
     </div>
 
@@ -332,62 +343,18 @@
 
   <footer class="footer container">
     <div style="font-weight: 800;">die Ragebaiters</div>
-    <div style="font-size: 0.8rem;">Est. 2026 • Made by sneiper0</div>
+    <div style="font-size: 0.8rem; opacity: 0.6;">Est. 2026 • Made by sneiper0</div>
   </footer>
 
   <script>
-    /**************************************************************************
-     * ###################################################################### *
-     * ##          T E A M - I N F O S   B E A R B E I T E N              ## *
-     * ###################################################################### *
-     **************************************************************************/
     const memberData = {
-      "Yotzek": {
-        img: "ben.png",
-        role: "Teamführer",
-        desc: "Verantwortlich für die strategische Ausrichtung und Koordination des Teams."
-      },
-      "sneiper0 (Jason)": { 
-        img: "jason.png", 
-        role: "Sniper", 
-        desc: "Präzisionsschütze der Ragebaiters. Deckt das Team aus der Distanz." 
-      },
-      "MundMBrothers (Michael)": { 
-        img: "michi.png", 
-        role: "Medic", 
-        desc: "Sorgt für die Einsatzfähigkeit des Teams im Feld." 
-      },
-      "Disccave (Nils)": {
-        img: "nils.png",
-        role: "Breacher / OG",
-        desc: "Nils hat die Gruppe zum Airsoft geführt und gehört damit zu den „OGs“. Besonders gut ist er in der Improvisation sowie in der Koordination kleiner Gruppen."
-      },
-      "Nathan Goldstein (Nathan)": { 
-        img: "nathan.png", 
-        role: "Support", 
-        desc: "Gibt dem Team den nötigen Feuerschutz mit hohem Munitionsdurchsatz." 
-      },
-      "Gemeral Richard (Riccardo)": { 
-        img: "riccardo.png", 
-        role: "Breacher", 
-        desc: "Spezialist für schnelles Eindringen und Nahkampf (CQB)." 
-      },
-      "Wolfgang": { 
-        img: "wolfgang.png", 
-        role: "Techniker", 
-        desc: "Der Mann für das Grobe und Feine. Hält die Markierer am Laufen." 
-      },
-
-      /* #######################################################################
-         ##  Y O N T E   -   D A T E N   (Bei Bedarf Kommentar /* entfernen)
-         #######################################################################
-      */
-      "Yonte": { 
-        img: "yonte.png", 
-        role: "Techniker", 
-        desc: "Zusätzliche technische Unterstützung für das Team." 
-      }
-      // #######################################################################
+      "Yotzek (Ben)": { img: "images/benf.png", role: "Teamführer", desc: "Ben koordiniert die Truppe und bewahrt selbst im Gefecht einen kühlen Kopf." },
+      "sneiper0 (Jason)": { img: "images/jason.png", role: "Sniper", desc: "Präzisionsschütze der Ragebaiters." },
+      "MundMbrothers (Michael)": { img: "images/michi2.png", role: "Medic", desc: "Sorgt für die Einsatzfähigkeit des Teams." },
+      "Disccave (Nils)": { img: "images/nils.png", role: "Breacher / OG", desc: "Einer der OGs. Experte für Improvisation." },
+      "Nathan Goldstein (Nathan)": { img: "images/nathan.png", role: "Support", desc: "Gibt Feuerschutz mit hohem Munitionsdurchsatz." },
+      "Gemeral Richard (Riccardo)": { img: "images/riccardo.png", role: "Breacher", desc: "Spezialist für CQB." },
+      "Wolfgang": { img: "images/wolfgang.png", role: "Techniker", desc: "Hält die Markierer am Laufen." }
     };
 
     function openMember(name) {
