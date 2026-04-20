@@ -90,6 +90,51 @@ a.active {
   box-shadow: 0 0 0 2px rgba(183,255,60,0.35), 0 8px 20px rgba(183,255,60,0.25);
 }
 
+/* ============================================
+   Social Icons (YouTube / Instagram)
+   Kein grüner Button – nur das Logo mit Glow
+   ============================================ */
+.social-icon,
+a.social-icon {
+  background: transparent !important;
+  border: none !important;
+  padding: 6px !important;
+  border-radius: 50% !important;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text) !important;
+  box-shadow: none;
+  text-transform: none;
+  letter-spacing: 0;
+  flex: 0 0 auto;
+  transition: transform 0.3s ease, color 0.3s ease, filter 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+}
+
+.social-icon svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+  transition: filter 0.3s ease, transform 0.3s ease;
+}
+
+.social-icon:hover,
+a.social-icon:hover {
+  transform: translateY(-2px) scale(1.08);
+  color: var(--accent) !important;
+  background: rgba(183,255,60,0.08) !important;
+  box-shadow: 0 0 22px rgba(183,255,60,0.55), 0 0 40px rgba(183,255,60,0.25);
+  filter: none;
+}
+
+.social-icon:hover svg {
+  filter: drop-shadow(0 0 8px rgba(183,255,60,0.85));
+}
+
+.social-icon:active { transform: translateY(0) scale(1.02); }
+
 header { padding: 10px 0; }
 
 .nav {
