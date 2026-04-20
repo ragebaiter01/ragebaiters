@@ -6,113 +6,12 @@
   <title>Mediathek | die Ragebaiters</title>
   <link rel="icon" type="image/png" href="images/logo.png">
   <link rel="stylesheet" href="styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  
-  <style>
-    /* Styling für das moderne Formular */
-    .upload-card {
-      background: var(--bg-soft);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      padding: 30px;
-      margin-bottom: 50px;
-      box-shadow: var(--shadow);
-    }
-
-    .file-drop-area {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 40px;
-      border: 2px dashed var(--line);
-      border-radius: 15px;
-      background: var(--panel);
-      transition: all 0.3s ease;
-      cursor: pointer;
-      margin-bottom: 20px;
-    }
-
-    .file-drop-area:hover {
-      border-color: var(--accent);
-      background: rgba(183, 255, 60, 0.05);
-    }
-
-    .file-drop-area svg {
-      width: 40px; height: 40px; color: var(--accent); margin-bottom: 10px;
-    }
-
-    /* Input Felder Styling */
-    .input-group { margin-bottom: 15px; }
-    .input-group label {
-      display: block;
-      color: var(--muted);
-      font-size: 0.8rem;
-      margin-bottom: 5px;
-      text-transform: uppercase;
-      font-weight: 700;
-    }
-
-    .input-style {
-      width: 100%;
-      padding: 14px;
-      background: var(--panel-strong);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      color: var(--text);
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.3s;
-    }
-
-    .input-style:focus { border-color: var(--accent); }
-
-    /* Der Upload Button */
-    #uploadBtn {
-      width: 100%;
-      padding: 16px;
-      background: var(--accent);
-      color: #000;
-      font-weight: 900;
-      text-transform: uppercase;
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 15px rgba(183, 255, 60, 0.2);
-    }
-
-    #uploadBtn:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 0 25px rgba(183, 255, 60, 0.5);
-    }
-
-    #uploadBtn:disabled { background: var(--muted); opacity: 0.6; cursor: not-allowed; }
-
-    /* Galerie Grid */
-    .media-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 25px;
-    }
-
-    .media-card {
-      background: var(--bg-soft);
-      border-radius: var(--radius);
-      border: 1px solid var(--line);
-      overflow: hidden;
-    }
-
-    .media-card img { width: 100%; height: 250px; object-fit: cover; }
-    .media-info { padding: 20px; }
-    .media-info h3 { margin: 0; color: var(--accent); }
-    .media-info p { color: var(--muted); margin-top: 5px; font-size: 0.9rem; }
-  </style>
+  <link rel="stylesheet" href="app.css">
 </head>
 <body>
 
   <div class="top-banner">
-    <img src="images/banner2.png" alt="Banner" />
+    <img src="images/banner2.png" alt="die Ragebaiters Banner" />
   </div>
 
   <header class="container">
@@ -123,108 +22,124 @@
         <a href="team.html">Team</a>
         <a class="active" href="mediathek.html">Mediathek</a>
         <a href="impressum.html">Impressum</a>
+        <a class="social-icon" href="https://www.youtube.com/@RagebaitersAS" target="_blank" rel="noopener" aria-label="YouTube" title="YouTube">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M23.498 6.186a2.999 2.999 0 0 0-2.112-2.122C19.505 3.5 12 3.5 12 3.5s-7.505 0-9.386.564A2.999 2.999 0 0 0 .502 6.186C0 8.074 0 12 0 12s0 3.926.502 5.814a2.999 2.999 0 0 0 2.112 2.122C4.495 20.5 12 20.5 12 20.5s7.505 0 9.386-.564a2.999 2.999 0 0 0 2.112-2.122C24 15.926 24 12 24 12s0-3.926-.502-5.814zM9.75 15.568V8.432L15.818 12 9.75 15.568z"/>
+          </svg>
+        </a>
+        <a class="social-icon" href="https://www.instagram.com/die_ragebaiters/" target="_blank" rel="noopener" aria-label="Instagram" title="Instagram">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+          </svg>
+        </a>
       </div>
     </nav>
   </header>
 
   <main class="container">
-    <section class="upload-card">
-      <h2 style="margin-top: 0; color: var(--accent);">NEUER BEITRAG</h2>
-      
-      <div class="file-drop-area" id="dropArea">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5-5 5 5m-5-5v12"></path>
-        </svg>
-        <span id="fileName">Bild auswählen oder reinziehen</span>
-        <input type="file" id="fileInput" accept="image/*" style="position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer;">
-      </div>
+    <section class="section">
+      <span class="eyebrow">Galerie</span>
+      <h2 style="margin: 10px 0 4px;">Mediathek</h2>
+      <p style="color: var(--muted); margin: 0 0 30px;">
+        Eindrücke und Momente der Ragebaiters.
+      </p>
 
-      <div class="input-group">
-        <label>Titel</label>
-        <input type="text" id="titleInput" class="input-style" placeholder="z.B. Action im CQB">
-      </div>
-      
-      <div class="input-group">
-        <label>Beschreibung</label>
-        <textarea id="descInput" class="input-style" rows="3" placeholder="Was ist auf dem Bild zu sehen?"></textarea>
-      </div>
+      <div id="gallery"></div>
 
-      <button id="uploadBtn">Beitrag veröffentlichen</button>
+      <div id="lightbox" class="lightbox" role="dialog" aria-hidden="true">
+        <button class="lightbox-close" type="button" aria-label="Schließen">&times;</button>
+        <button class="lightbox-nav prev" type="button" aria-label="Vorheriges">‹</button>
+        <button class="lightbox-nav next" type="button" aria-label="Nächstes">›</button>
+        <img class="lightbox-img" src="" alt="">
+        <div class="lightbox-caption"></div>
+      </div>
     </section>
-
-    <h2>Galerie</h2>
-    <div id="gallery" class="media-grid"></div>
   </main>
 
-  <script>
-    const SUPABASE_URL = 'https://twrzklmtwouwqkrpnrpw.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_HovuOnObKX3VOOt8EpN2jw_SGBJ9-7e';
-    const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  <footer class="footer container">
+    <div style="font-weight: 800;">die Ragebaiters</div>
+    <div style="font-size: 0.8rem; opacity: 0.6;">Est. 2026 • Made by sneiper0</div>
+  </footer>
 
-    const fileInput = document.getElementById('fileInput');
-    const fileNameDisplay = document.getElementById('fileName');
-    const uploadBtn = document.getElementById('uploadBtn');
+  <script src="config.js"></script>
+  <script type="module">
+    import { supabase, initPage } from './auth.js';
+    await initPage('mediathek');
 
-    // Dateinamen anzeigen
-    fileInput.addEventListener('change', () => {
-      if (fileInput.files.length > 0) {
-        fileNameDisplay.innerText = "Ausgewählt: " + fileInput.files[0].name;
-        fileNameDisplay.style.color = "var(--accent)";
+    const gallery = document.getElementById('gallery');
+
+    const { data, error } = await supabase
+      .from('photos_public')
+      .select('id, storage_path, title, author, uploaded_at');
+
+    if (error) {
+      gallery.innerHTML = '<div class="alert alert-error">' + escapeHtml(error.message) + '</div>';
+    } else if (!data.length) {
+      gallery.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Es wurden noch keine Fotos hochgeladen.</div>';
+    } else {
+      const grid = document.createElement('div');
+      grid.className = 'photo-grid lightbox-grid';
+      for (const p of data) {
+        const { data: pub } = supabase.storage.from('photos').getPublicUrl(p.storage_path);
+        const fig = document.createElement('figure');
+        fig.className = 'photo-item';
+        fig.dataset.full = pub.publicUrl;
+        fig.dataset.title = p.title || '';
+        fig.dataset.author = p.author || '';
+        fig.innerHTML = `
+          <img src="${pub.publicUrl}" alt="${escapeHtml(p.title || '')}" loading="lazy">
+          <figcaption>
+            <span>${escapeHtml(p.title || '')}</span>
+            <small>von ${escapeHtml(p.author || 'anonym')}</small>
+          </figcaption>`;
+        grid.appendChild(fig);
       }
-    });
-
-    // Galerie laden
-    async function loadGallery() {
-      const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
-      if (error) return;
-      document.getElementById('gallery').innerHTML = data.map(item => `
-        <div class="media-card">
-          <img src="${item.image_url}" alt="Ragebaiters">
-          <div class="media-info">
-            <h3>${item.title}</h3>
-            <p>${item.description || ''}</p>
-          </div>
-        </div>
-      `).join('');
+      gallery.appendChild(grid);
+      initLightbox(grid);
     }
 
-    // Upload Logik
-    uploadBtn.addEventListener('click', async () => {
-      const file = fileInput.files[0];
-      const title = document.getElementById('titleInput').value;
-      const desc = document.getElementById('descInput').value;
-
-      if (!file || !title) return alert("Bitte Bild und Titel eingeben!");
-
-      uploadBtn.disabled = true;
-      uploadBtn.innerText = "Lädt hoch...";
-
-      const fName = `${Date.now()}_${file.name}`;
-      const { error: sErr } = await supabase.storage.from('images').upload(fName, file);
-
-      if (sErr) {
-        alert("Fehler beim Hochladen des Bildes!");
-        uploadBtn.disabled = false;
-        return;
+    function initLightbox(grid) {
+      const lb = document.getElementById('lightbox');
+      const img = lb.querySelector('.lightbox-img');
+      const cap = lb.querySelector('.lightbox-caption');
+      const btnClose = lb.querySelector('.lightbox-close');
+      const btnPrev  = lb.querySelector('.prev');
+      const btnNext  = lb.querySelector('.next');
+      const items = [...grid.querySelectorAll('.photo-item')];
+      let idx = -1;
+      function show(i) {
+        if (i < 0 || i >= items.length) return;
+        idx = i;
+        const it = items[i];
+        img.src = it.dataset.full;
+        cap.innerHTML = `<strong>${escapeHtml(it.dataset.title)}</strong>` +
+          (it.dataset.author ? ` <span>von ${escapeHtml(it.dataset.author)}</span>` : '');
+        lb.classList.add('is-open');
+        lb.setAttribute('aria-hidden', 'false');
       }
-
-      const { data: urlData } = supabase.storage.from('images').getPublicUrl(fName);
-      
-      const { error: dbError } = await supabase.from('posts').insert([{ 
-        title, 
-        description: desc, 
-        image_url: urlData.publicUrl 
-      }]);
-
-      if (dbError) {
-        alert("Fehler beim Speichern der Texte!");
-        uploadBtn.disabled = false;
-      } else {
-        location.reload();
+      function close() {
+        lb.classList.remove('is-open');
+        lb.setAttribute('aria-hidden', 'true');
+        img.src = '';
       }
-    });
+      items.forEach((it, i) => it.addEventListener('click', (e) => { e.preventDefault(); show(i); }));
+      btnClose.addEventListener('click', close);
+      btnPrev.addEventListener('click', () => show((idx - 1 + items.length) % items.length));
+      btnNext.addEventListener('click', () => show((idx + 1) % items.length));
+      lb.addEventListener('click', e => { if (e.target === lb) close(); });
+      document.addEventListener('keydown', e => {
+        if (!lb.classList.contains('is-open')) return;
+        if (e.key === 'Escape')     close();
+        if (e.key === 'ArrowLeft')  show((idx - 1 + items.length) % items.length);
+        if (e.key === 'ArrowRight') show((idx + 1) % items.length);
+      });
+    }
 
-    loadGallery();
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
   </script>
 </body>
 </html>
