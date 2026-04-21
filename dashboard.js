@@ -283,18 +283,13 @@ async function uploadOne(file, caption) {
   bar.style.width = '70%';
   status.textContent = '70 %';
 
-  let visibility = state.role === 'observer' ? 'pending_review' : 'public';
-
-  const { error: dbError } = await supabase.from('photos').insert({
-    user_id: state.user.id,
-    storage_path: key,
-    title,
-    caption: finalCaption,
-    mime,
-    size_bytes: sizeBytes,
-    width: dims.width,
-    height: dims.height,
-    visibility
+  const { error: dbError } = await supabase.rpc('create_photo_upload', {
+    p_storage_path: key,
+    p_title: title,
+    p_caption: finalCaption,
+    p_size_bytes: sizeBytes,
+    p_width: dims.width,
+    p_height: dims.height
   });
   if (dbError) return failUpload(row, status, dbError.message);
 

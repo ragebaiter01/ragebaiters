@@ -8,6 +8,7 @@ drop function if exists public.admin_create_invite(text, text);
 drop function if exists public.admin_create_invite(text, text, text);
 drop function if exists public.dashboard_list_members();
 drop function if exists public.redeem_invite(text);
+drop function if exists public.create_photo_upload(text, text, text, bigint, integer, integer);
 drop function if exists public.admin_approve_photo(bigint);
 drop function if exists public.admin_mark_photo_as_troll(bigint);
 drop function if exists public.admin_delete_photo(bigint);
@@ -336,6 +337,67 @@ as $$
   order by coalesce(p.username, split_part(u.email::text, '@', 1)) asc;
 $$;
 
+create or replace function public.create_photo_upload(
+  p_storage_path text,
+  p_title text,
+  p_caption text,
+  p_size_bytes bigint,
+  p_width integer,
+  p_height integer
+)
+returns bigint
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_role text;
+  v_visibility text;
+  v_photo_id bigint;
+begin
+  if auth.uid() is null then
+    raise exception 'Du musst eingeloggt sein.';
+  end if;
+
+  v_role := public.current_user_role();
+  v_visibility := case
+    when v_role = 'observer' then 'pending_review'
+    else 'public'
+  end;
+
+  insert into public.photos (
+    user_id,
+    storage_path,
+    title,
+    caption,
+    mime,
+    size_bytes,
+    width,
+    height,
+    visibility
+  )
+  values (
+    auth.uid(),
+    p_storage_path,
+    left(coalesce(p_title, ''), 160),
+    nullif(trim(coalesce(p_caption, '')), ''),
+    case
+      when lower(coalesce(p_storage_path, '')) like '%.png' then 'image/png'
+      when lower(coalesce(p_storage_path, '')) like '%.webp' then 'image/webp'
+      when lower(coalesce(p_storage_path, '')) like '%.gif' then 'image/gif'
+      else 'image/jpeg'
+    end,
+    p_size_bytes,
+    p_width,
+    p_height,
+    v_visibility
+  )
+  returning id into v_photo_id;
+
+  return v_photo_id;
+end;
+$$;
+
 create or replace function public.list_gallery_photos(p_include_internal boolean default false)
 returns table (
   id bigint,
@@ -590,6 +652,7 @@ grant execute on function public.admin_create_invite(text, text, text) to authen
 grant execute on function public.admin_delete_invite(text) to authenticated;
 grant execute on function public.admin_list_users() to authenticated;
 grant execute on function public.dashboard_list_members() to authenticated;
+grant execute on function public.create_photo_upload(text, text, text, bigint, integer, integer) to authenticated;
 grant execute on function public.list_gallery_photos(boolean) to anon, authenticated;
 grant execute on function public.get_latest_gallery_photo(boolean) to anon, authenticated;
 grant execute on function public.admin_update_user(uuid, text, text) to authenticated;
