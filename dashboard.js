@@ -4,7 +4,6 @@ await initPage('dashboard');
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const TROLL_IMAGE_SENTINEL = '__local__/images/nathanrole.png';
 const TROLL_IMAGE_CAPTION = 'schabbatt schalom';
 const BANNER_OPTIONS = {
   sponsor: { src: 'images/banner.png', label: 'Sponsor' },
@@ -80,14 +79,17 @@ state.role = normalizeRole(state.profile?.role);
 state.isAdmin = state.role === 'admin';
 state.canUpload = state.role === 'observer' || state.role === 'member' || state.role === 'admin';
 state.canViewUsers = state.role === 'member' || state.role === 'admin';
+
 helloEl.textContent = state.profile?.username || state.user.email || 'Mitglied';
 roleBadge.textContent = roleLabel(state.role);
+
 if (!state.isAdmin) {
   memberNote.hidden = false;
   adminOnlyNodes.forEach(node => {
     node.hidden = true;
   });
 }
+
 if (!state.canUpload && !state.canViewUsers) {
   memberUpNodes.forEach(node => {
     node.hidden = true;
@@ -96,23 +98,16 @@ if (!state.canUpload && !state.canViewUsers) {
 
 setupWelcome();
 setupUserSectionCopy();
-
 setupNavigation();
 if (state.canUpload) setupUploads();
-if (state.canViewUsers) {
-  refreshUsersBtn.addEventListener('click', () => loadUsers());
-}
+if (state.canViewUsers) refreshUsersBtn.addEventListener('click', () => loadUsers());
 setupAdminActions();
 
 loadingSection.hidden = true;
 mainSection.hidden = false;
 
-if (state.canUpload) {
-  await loadMyPhotos();
-}
-if (state.canViewUsers) {
-  await loadUsers();
-}
+if (state.canUpload) await loadMyPhotos();
+if (state.canViewUsers) await loadUsers();
 if (state.isAdmin) {
   await Promise.all([
     loadPendingReviews(),
@@ -132,7 +127,9 @@ function setupNavigation() {
 
   const initialView = normalizeView((location.hash || '').replace('#', ''));
   setActiveView(initialView);
-  window.addEventListener('hashchange', () => setActiveView(normalizeView((location.hash || '').replace('#', ''))));
+  window.addEventListener('hashchange', () => {
+    setActiveView(normalizeView((location.hash || '').replace('#', '')));
+  });
 }
 
 function normalizeView(view) {
@@ -161,21 +158,25 @@ function setActiveView(view) {
 
 function setupUploads() {
   dropzone.addEventListener('click', () => fileInput.click());
+
   ['dragover', 'dragenter'].forEach(eventName => {
     dropzone.addEventListener(eventName, event => {
       event.preventDefault();
       dropzone.classList.add('is-dragover');
     });
   });
+
   ['dragleave', 'drop'].forEach(eventName => {
     dropzone.addEventListener(eventName, event => {
       event.preventDefault();
       dropzone.classList.remove('is-dragover');
     });
   });
+
   dropzone.addEventListener('drop', event => {
     if (event.dataTransfer?.files?.length) handleUploadFiles(event.dataTransfer.files);
   });
+
   fileInput.addEventListener('change', () => {
     if (fileInput.files.length) handleUploadFiles(fileInput.files);
     fileInput.value = '';
@@ -205,8 +206,8 @@ function setupAdminActions() {
   bannerRadios.forEach(radio => {
     radio.addEventListener('change', () => updateBannerPreview(radio.value));
   });
-  saveBannerBtn.addEventListener('click', () => saveBannerSetting());
 
+  saveBannerBtn.addEventListener('click', () => saveBannerSetting());
 }
 
 function setupWelcome() {
@@ -220,13 +221,27 @@ function setupWelcome() {
 
   const cards = [
     capabilityCard('Willkommensbereich', 'Immer sichtbar', 'Deine aktuelle Rolle und deine freigeschalteten Bereiche.'),
-    capabilityCard('Uploads', state.canUpload ? 'Freigeschaltet' : 'Gesperrt', state.role === 'observer'
-      ? 'Bilder hochladen. Ein Admin muss sie freigeben, bevor sie oeffentlich erscheinen.'
-      : state.canUpload
-        ? 'Bilder hochladen und eigene Uploads verwalten.'
-        : 'Nur fuer Mitglieder, Beobachter und Admins freigeschaltet.'),
-    capabilityCard('Mitglieder', state.canViewUsers ? 'Freigeschaltet' : 'Gesperrt', state.canViewUsers ? (state.isAdmin ? 'Alle Benutzer sehen und verwalten.' : 'Mitgliederliste in reiner Lesesicht.') : 'Nur fuer Mitglieder und Admins freigeschaltet.'),
-    capabilityCard('Admin-Funktionen', state.isAdmin ? 'Freigeschaltet' : 'Gesperrt', state.isAdmin ? 'Einladungscodes, Banner und Benutzerverwaltung komplett verfuegbar.' : 'Nur fuer Admins sichtbar.')
+    capabilityCard(
+      'Uploads',
+      state.canUpload ? 'Freigeschaltet' : 'Gesperrt',
+      state.role === 'observer'
+        ? 'Bilder hochladen. Ein Admin muss sie freigeben, bevor sie oeffentlich erscheinen.'
+        : state.canUpload
+          ? 'Bilder hochladen und eigene Uploads verwalten.'
+          : 'Nur fuer Mitglieder, Beobachter und Admins freigeschaltet.'
+    ),
+    capabilityCard(
+      'Mitglieder',
+      state.canViewUsers ? 'Freigeschaltet' : 'Gesperrt',
+      state.canViewUsers
+        ? (state.isAdmin ? 'Alle Benutzer sehen und verwalten.' : 'Mitgliederliste in reiner Lesesicht.')
+        : 'Nur fuer Mitglieder und Admins freigeschaltet.'
+    ),
+    capabilityCard(
+      'Admin-Funktionen',
+      state.isAdmin ? 'Freigeschaltet' : 'Gesperrt',
+      state.isAdmin ? 'Einladungscodes, Banner und Benutzerverwaltung komplett verfuegbar.' : 'Nur fuer Admins sichtbar.'
+    )
   ];
 
   welcomeCapabilities.innerHTML = cards.join('');
@@ -266,18 +281,16 @@ async function uploadOne(file, caption) {
   bar.style.width = '30%';
   status.textContent = '30 %';
 
-  let key = null;
-  let mime = file.type;
-  let sizeBytes = file.size;
-  let dims = await readImageDims(file).catch(() => ({ width: null, height: null }));
-  let title = stripExt(file.name).slice(0, 160);
-  let finalCaption = caption || null;
+  const dims = await readImageDims(file).catch(() => ({ width: null, height: null }));
+  const title = stripExt(file.name).slice(0, 160);
+  const finalCaption = caption || null;
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-  key = `${state.user.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const key = `${state.user.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
     .from('photos')
     .upload(key, file, { cacheControl: '3600', contentType: file.type });
+
   if (uploadError) return failUpload(row, status, uploadError.message);
 
   bar.style.width = '70%';
@@ -287,16 +300,19 @@ async function uploadOne(file, caption) {
     p_storage_path: key,
     p_title: title,
     p_caption: finalCaption,
-    p_size_bytes: sizeBytes,
+    p_size_bytes: file.size,
     p_width: dims.width,
     p_height: dims.height
   });
+
   if (dbError) return failUpload(row, status, dbError.message);
 
   bar.style.width = '100%';
   status.textContent = 'fertig';
   row.classList.add('is-done');
+
   if (captionInput.value.trim() === caption) captionInput.value = '';
+
   setTimeout(loadMyPhotos, 400);
   if (state.isAdmin) setTimeout(loadPendingReviews, 400);
 }
@@ -319,6 +335,7 @@ async function loadMyPhotos() {
   }
 
   countEl.textContent = data.length;
+
   if (!data.length) {
     myPhotos.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Noch keine Bilder hochgeladen.</div>';
     return;
@@ -326,13 +343,16 @@ async function loadMyPhotos() {
 
   myPhotos.innerHTML = '<div class="photo-grid"></div>';
   const grid = myPhotos.querySelector('.photo-grid');
+
   for (const photo of data) {
     const publicUrl = resolvePhotoUrl(photo.storage_path);
     const fig = document.createElement('figure');
     fig.className = 'photo-item';
+
     const actions = state.isAdmin
       ? `<button class="btn-delete" type="button" data-id="${photo.id}" data-path="${encodeURIComponent(photo.storage_path)}" title="Loeschen">x</button>`
       : '';
+
     fig.innerHTML = `
       <a href="${publicUrl}" target="_blank" rel="noopener">
         <img src="${publicUrl}" alt="${escapeHtml(photo.title || '')}" loading="lazy">
@@ -345,21 +365,33 @@ async function loadMyPhotos() {
         </div>
         ${actions}
       </figcaption>`;
+
     grid.appendChild(fig);
   }
 
   grid.querySelectorAll('.btn-delete').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm('Dieses Foto wirklich loeschen?')) return;
+
       const id = Number(btn.dataset.id);
       const path = decodeURIComponent(btn.dataset.path);
+
       if (!isLocalPhotoPath(path)) {
         const { error: storageError } = await supabase.storage.from('photos').remove([path]);
-        if (storageError) return alert(storageError.message);
+        if (storageError && !/not found|no such object|not exists/i.test(storageError.message || '')) {
+          return alert(storageError.message);
+        }
       }
-      const { error: dbError } = await supabase.from('photos').delete().eq('id', id);
+
+      const { data: deleted, error: dbError } = await supabase.rpc('admin_delete_photo', {
+        p_photo_id: id
+      });
+
       if (dbError) return alert(dbError.message);
+      if (!deleted) return alert('Foto konnte nicht geloescht werden.');
+
       loadMyPhotos();
+      if (state.isAdmin) loadPendingReviews();
     });
   });
 }
@@ -368,6 +400,7 @@ async function loadPendingReviews() {
   if (!state.isAdmin || !pendingReviews) return;
 
   pendingReviews.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Pruefe Uploads...</div>';
+
   const { data, error } = await supabase
     .from('photos')
     .select('id, storage_path, title, caption, uploaded_at, visibility, user_id')
@@ -386,11 +419,13 @@ async function loadPendingReviews() {
 
   const userIds = [...new Set(data.map(photo => photo.user_id).filter(Boolean))];
   const authorsById = {};
+
   if (userIds.length) {
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, username')
       .in('id', userIds);
+
     (profiles || []).forEach(profile => {
       authorsById[profile.id] = profile.username || 'Unbekannt';
     });
@@ -417,7 +452,7 @@ async function loadPendingReviews() {
         <div class="table-actions">
           <button class="btn-tertiary" type="button" data-action="approve" data-id="${photo.id}">Freigeben</button>
           <button class="btn-danger" type="button" data-action="troll" data-id="${photo.id}">Troll</button>
-          <button class="btn-danger" type="button" data-action="delete-review" data-id="${photo.id}">Loeschen</button>
+          <button class="btn-danger" type="button" data-action="delete-review" data-id="${photo.id}" data-path="${encodeURIComponent(photo.storage_path)}">Loeschen</button>
         </div>
       </figcaption>`;
     grid.appendChild(fig);
@@ -450,12 +485,23 @@ async function loadPendingReviews() {
   grid.querySelectorAll('[data-action="delete-review"]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const photoId = Number(btn.dataset.id);
+      const photoPath = decodeURIComponent(btn.dataset.path || '');
       if (!confirm('Diesen Upload wirklich loeschen?')) return;
+
+      if (photoPath && !isLocalPhotoPath(photoPath)) {
+        const { error: storageError } = await supabase.storage.from('photos').remove([photoPath]);
+        if (storageError && !/not found|no such object|not exists/i.test(storageError.message || '')) {
+          return alert(storageError.message);
+        }
+      }
+
       const { data: deleted, error: deleteError } = await supabase.rpc('admin_delete_photo', {
         p_photo_id: photoId
       });
+
       if (deleteError) return alert(deleteError.message);
       if (!deleted) return alert('Upload konnte nicht geloescht werden.');
+
       await Promise.all([loadPendingReviews(), loadMyPhotos()]);
     });
   });
@@ -463,6 +509,7 @@ async function loadPendingReviews() {
 
 async function createInvite({ code, inviteFor, inviteRole }) {
   setMessage(inviteMessage, '', 'info', true);
+
   const normalized = String(code || '')
     .trim()
     .toUpperCase()
@@ -472,16 +519,20 @@ async function createInvite({ code, inviteFor, inviteRole }) {
     .replace(/^-|-$/g, '');
 
   createInviteBtn.disabled = true;
+
   const { data, error } = await supabase.rpc('admin_create_invite', {
     p_code: normalized || null,
     p_for: inviteFor || null,
     p_role: inviteRole || 'member'
   });
+
   createInviteBtn.disabled = false;
+
   if (error) {
     setMessage(inviteMessage, `Code konnte nicht erstellt werden: ${error.message}`, 'error');
     return;
   }
+
   inviteForm.reset();
   inviteCodeInput.value = data || '';
   setMessage(inviteMessage, `Code erstellt: ${data}`, 'success');
@@ -490,7 +541,9 @@ async function createInvite({ code, inviteFor, inviteRole }) {
 
 async function loadInvites() {
   inviteRows.innerHTML = '<tr><td colspan="8" class="table-empty">Einladungscodes werden geladen...</td></tr>';
+
   const { data, error } = await supabase.rpc('admin_list_invites');
+
   if (error) {
     inviteRows.innerHTML = `<tr><td colspan="8" class="table-empty">Fehler: ${escapeHtml(error.message)}</td></tr>`;
     setMessage(inviteMessage, `Invite-Liste konnte nicht geladen werden: ${error.message}`, 'error');
@@ -499,6 +552,7 @@ async function loadInvites() {
 
   const invites = data || [];
   const usedCount = invites.filter(invite => invite.is_used).length;
+
   inviteOpenCount.textContent = String(invites.length - usedCount);
   inviteUsedCount.textContent = String(usedCount);
   inviteTotalCount.textContent = String(invites.length);
@@ -541,11 +595,14 @@ async function loadInvites() {
     btn.addEventListener('click', async () => {
       const code = btn.dataset.code;
       if (!confirm(`Einladungscode ${code} wirklich loeschen?`)) return;
+
       const { error: deleteError } = await supabase.rpc('admin_delete_invite', { p_code: code });
+
       if (deleteError) {
         setMessage(inviteMessage, `Code konnte nicht geloescht werden: ${deleteError.message}`, 'error');
         return;
       }
+
       setMessage(inviteMessage, `Code geloescht: ${code}`, 'success');
       await loadInvites();
     });
@@ -554,11 +611,13 @@ async function loadInvites() {
 
 async function loadBannerSetting() {
   const { data, error } = await supabase.rpc('get_homepage_banner');
+
   if (error) {
     setMessage(bannerMessage, `Banner-Einstellung konnte nicht geladen werden: ${error.message}`, 'error');
     updateBannerPreview('team');
     return;
   }
+
   const variant = data in BANNER_OPTIONS ? data : 'team';
   const radio = bannerRadios.find(entry => entry.value === variant);
   if (radio) radio.checked = true;
@@ -568,10 +627,12 @@ async function loadBannerSetting() {
 async function saveBannerSetting() {
   const selected = bannerRadios.find(radio => radio.checked)?.value || 'team';
   const { error } = await supabase.rpc('admin_set_homepage_banner', { p_variant: selected });
+
   if (error) {
     setMessage(bannerMessage, `Banner konnte nicht gespeichert werden: ${error.message}`, 'error');
     return;
   }
+
   updateBannerPreview(selected);
   setMessage(bannerMessage, `Startseiten-Banner gespeichert: ${BANNER_OPTIONS[selected].label}`, 'success');
 }
@@ -608,6 +669,7 @@ async function loadUsers() {
 
   const rpcName = state.isAdmin ? 'admin_list_users' : 'dashboard_list_members';
   const { data, error } = await supabase.rpc(rpcName);
+
   if (error) {
     const colspan = state.isAdmin ? 6 : 3;
     userRows.innerHTML = `<tr><td colspan="${colspan}" class="table-empty">Fehler: ${escapeHtml(error.message)}</td></tr>`;
@@ -616,6 +678,7 @@ async function loadUsers() {
   }
 
   const users = data || [];
+
   if (!users.length) {
     const colspan = state.isAdmin ? 6 : 3;
     userRows.innerHTML = `<tr><td colspan="${colspan}" class="table-empty">Keine Benutzer gefunden.</td></tr>`;
@@ -668,15 +731,18 @@ async function loadUsers() {
       const userId = row.dataset.userId;
       const username = row.querySelector('[data-field="username"]').value.trim();
       const role = row.querySelector('[data-field="role"]').value;
+
       const { error: saveError } = await supabase.rpc('admin_update_user', {
         p_user_id: userId,
         p_username: username,
         p_role: role
       });
+
       if (saveError) {
         setMessage(userMessage, `Benutzer konnte nicht gespeichert werden: ${saveError.message}`, 'error');
         return;
       }
+
       setMessage(userMessage, 'Benutzer aktualisiert.', 'success');
       loadUsers();
     });
@@ -685,12 +751,14 @@ async function loadUsers() {
   userRows.querySelectorAll('[data-action="delete-user"]').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (btn.disabled) return;
+
       const row = btn.closest('tr');
       const userId = row.dataset.userId;
       if (!userId) {
         setMessage(userMessage, 'Benutzer-ID fehlt. Bitte Liste neu laden und erneut versuchen.', 'error');
         return;
       }
+
       const username = row.querySelector('[data-field="username"]').value.trim() || 'dieses Konto';
       if (!confirm(`Benutzer ${username} wirklich loeschen?`)) return;
 
@@ -720,11 +788,14 @@ async function ensureProfile(user) {
     .slice(0, 24) || 'member';
   const candidate = `${base}-${user.id.slice(0, 6)}`.slice(0, 32);
   const payload = { id: user.id, username: candidate, role: 'member' };
+
   const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' });
+
   if (error) {
     console.error('[Ragebaiters] Profil-Reparatur fehlgeschlagen:', error);
     return null;
   }
+
   return payload;
 }
 
@@ -749,12 +820,14 @@ function readImageDims(file) {
 
 function setMessage(el, text, type = 'info', hidden = false) {
   if (!el) return;
+
   if (hidden || !text) {
     el.hidden = true;
     el.textContent = '';
     el.className = 'admin-message';
     return;
   }
+
   el.hidden = false;
   el.textContent = text;
   el.className = `admin-message is-${type}`;
