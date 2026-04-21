@@ -88,6 +88,10 @@ if (!state.isAdmin) {
   adminOnlyNodes.forEach(node => {
     node.hidden = true;
   });
+} else {
+  adminOnlyNodes.forEach(node => {
+    node.hidden = false;
+  });
 }
 
 if (!state.canUpload && !state.canViewUsers) {
