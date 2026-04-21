@@ -620,6 +620,9 @@ h2 { font-size: clamp(1.8rem, 8vw, 3rem); font-weight: 900; line-height: 1.2; }
     border-right: 1px solid rgba(255,255,255,0.1);
     box-shadow: 18px 0 48px rgba(0,0,0,0.45);
     transform: translateX(-110%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
     transition: transform 0.32s ease;
     scrollbar-width: thin;
   }
@@ -637,8 +640,12 @@ h2 { font-size: clamp(1.8rem, 8vw, 3rem); font-weight: 900; line-height: 1.2; }
     justify-content: center;
   }
 
+  .nav.is-open .nav-links,
   .nav-links.is-open {
     transform: translateX(0);
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
   }
 
   body.nav-open .nav-backdrop {

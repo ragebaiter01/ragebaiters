@@ -105,6 +105,7 @@ function setupMobileNav() {
 
   const closeMenu = () => {
     document.body.classList.remove('nav-open');
+    nav.classList.remove('is-open');
     navLinks.classList.remove('is-open');
     toggle.setAttribute('aria-expanded', 'false');
     toggle.setAttribute('aria-label', 'Menue oeffnen');
@@ -112,6 +113,7 @@ function setupMobileNav() {
 
   const openMenu = () => {
     document.body.classList.add('nav-open');
+    nav.classList.add('is-open');
     navLinks.classList.add('is-open');
     toggle.setAttribute('aria-expanded', 'true');
     toggle.setAttribute('aria-label', 'Menue schliessen');
