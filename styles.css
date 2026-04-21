@@ -175,34 +175,40 @@ header { padding: 10px 0; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 14px;
-  border: 1px solid rgba(183,255,60,0.2);
-  background: rgba(255,255,255,0.04);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.02);
   color: var(--text);
   cursor: pointer;
-  transition: transform 0.25s ease, border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: none;
+  transition: transform 0.25s ease, border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease, color 0.25s ease;
 }
 
 .nav-toggle:hover {
   transform: translateY(-1px);
-  border-color: rgba(183,255,60,0.45);
-  background: rgba(183,255,60,0.08);
-  box-shadow: 0 10px 24px rgba(0,0,0,0.25), 0 0 18px rgba(183,255,60,0.16);
+  border-color: rgba(183,255,60,0.35);
+  background: rgba(183,255,60,0.06);
+  color: var(--accent);
+  box-shadow: 0 0 18px rgba(183,255,60,0.2);
 }
 
 .nav-toggle:active { transform: translateY(0); }
 
 .nav-toggle-bar {
-  width: 18px;
-  height: 2px;
+  width: 20px;
+  height: 2.5px;
   border-radius: 999px;
   background: currentColor;
   display: block;
-  transition: transform 0.25s ease, opacity 0.25s ease;
+  transition: transform 0.25s ease, opacity 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
 }
 
 .nav-toggle-bar + .nav-toggle-bar {
-  margin-top: 4px;
+  margin-top: 5px;
+}
+
+.nav-toggle:hover .nav-toggle-bar {
+  box-shadow: 0 0 10px rgba(183,255,60,0.75);
 }
 
 .nav-links {
