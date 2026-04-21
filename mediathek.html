@@ -72,7 +72,7 @@
     const currentUser = await getSessionUser();
     const currentProfile = currentUser ? await getProfile(currentUser.id) : null;
     const currentRole = normalizeRole(currentProfile?.role);
-    const canSeeInternalPosts = currentRole === 'admin';
+    const canSeeInternalPosts = currentRole === 'admin' || currentRole === 'observer';
 
     const { data, error } = await supabase.rpc('list_gallery_photos', {
       p_include_internal: canSeeInternalPosts

@@ -8,6 +8,9 @@ drop function if exists public.admin_create_invite(text, text);
 drop function if exists public.admin_create_invite(text, text, text);
 drop function if exists public.dashboard_list_members();
 drop function if exists public.redeem_invite(text);
+drop function if exists public.admin_approve_photo(bigint);
+drop function if exists public.admin_mark_photo_as_troll(bigint);
+drop function if exists public.admin_delete_photo(bigint);
 drop view if exists public.photos_public;
 drop function if exists public.list_gallery_photos(boolean);
 drop function if exists public.get_latest_gallery_photo(boolean);
@@ -356,7 +359,7 @@ as $$
      or (
        p.visibility = 'troll_internal'
        and p_include_internal
-       and public.is_admin()
+       and public.current_user_role() in ('observer', 'admin')
      )
   order by p.uploaded_at desc;
 $$;
@@ -440,6 +443,86 @@ begin
 end;
 $$;
 
+create or replace function public.admin_approve_photo(p_photo_id bigint)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Nur Admins duerfen Uploads freigeben.';
+  end if;
+
+  update public.photos
+  set visibility = 'public'
+  where id = p_photo_id;
+
+  return found;
+end;
+$$;
+
+create or replace function public.admin_mark_photo_as_troll(p_photo_id bigint)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Nur Admins duerfen Uploads als Troll-Post markieren.';
+  end if;
+
+  update public.photos
+  set storage_path = '__local__/images/nathanrole.png',
+      title = 'Nathan Role',
+      caption = 'schabbatt schalom',
+      mime = 'image/png',
+      size_bytes = null,
+      width = null,
+      height = null,
+      visibility = 'troll_internal'
+  where id = p_photo_id;
+
+  return found;
+end;
+$$;
+
+create or replace function public.admin_delete_photo(p_photo_id bigint)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_storage_path text;
+begin
+  if not public.is_admin() then
+    raise exception 'Nur Admins duerfen Uploads loeschen.';
+  end if;
+
+  select storage_path
+  into v_storage_path
+  from public.photos
+  where id = p_photo_id;
+
+  if v_storage_path is null then
+    return false;
+  end if;
+
+  if v_storage_path not like '__local__/%' then
+    delete from storage.objects
+    where bucket_id = 'photos'
+      and name = v_storage_path;
+  end if;
+
+  delete from public.photos
+  where id = p_photo_id;
+
+  return found;
+end;
+$$;
+
 create or replace function public.admin_delete_user(p_user_id uuid)
 returns boolean
 language plpgsql
@@ -505,6 +588,9 @@ grant execute on function public.dashboard_list_members() to authenticated;
 grant execute on function public.list_gallery_photos(boolean) to anon, authenticated;
 grant execute on function public.get_latest_gallery_photo(boolean) to anon, authenticated;
 grant execute on function public.admin_update_user(uuid, text, text) to authenticated;
+grant execute on function public.admin_approve_photo(bigint) to authenticated;
+grant execute on function public.admin_mark_photo_as_troll(bigint) to authenticated;
+grant execute on function public.admin_delete_photo(bigint) to authenticated;
 grant execute on function public.admin_delete_user(uuid) to authenticated;
 
 grant select on public.photos_public to anon, authenticated;

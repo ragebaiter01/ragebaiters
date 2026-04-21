@@ -5,7 +5,7 @@ await initPage('dashboard');
 const MAX_BYTES = 8 * 1024 * 1024;
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const TROLL_IMAGE_SENTINEL = '__local__/images/nathanrole.png';
-const TROLL_IMAGE_CAPTION = 'schabbat schalom';
+const TROLL_IMAGE_CAPTION = 'schabbatt schalom';
 const BANNER_OPTIONS = {
   sponsor: { src: 'images/banner.png', label: 'Sponsor' },
   team: { src: 'images/banner2.png', label: 'Team' }
@@ -422,6 +422,7 @@ async function loadPendingReviews() {
         <div class="table-actions">
           <button class="btn-tertiary" type="button" data-action="approve" data-id="${photo.id}">Freigeben</button>
           <button class="btn-danger" type="button" data-action="troll" data-id="${photo.id}">Troll</button>
+          <button class="btn-danger" type="button" data-action="delete-review" data-id="${photo.id}">Loeschen</button>
         </div>
       </figcaption>`;
     grid.appendChild(fig);
@@ -430,11 +431,11 @@ async function loadPendingReviews() {
   grid.querySelectorAll('[data-action="approve"]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const photoId = Number(btn.dataset.id);
-      const { error: updateError } = await supabase
-        .from('photos')
-        .update({ visibility: 'public' })
-        .eq('id', photoId);
+      const { data: approved, error: updateError } = await supabase.rpc('admin_approve_photo', {
+        p_photo_id: photoId
+      });
       if (updateError) return alert(updateError.message);
+      if (!approved) return alert('Upload konnte nicht freigegeben werden.');
       await Promise.all([loadPendingReviews(), loadMyPhotos()]);
     });
   });
@@ -442,20 +443,24 @@ async function loadPendingReviews() {
   grid.querySelectorAll('[data-action="troll"]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const photoId = Number(btn.dataset.id);
-      const { error: updateError } = await supabase
-        .from('photos')
-        .update({
-          storage_path: TROLL_IMAGE_SENTINEL,
-          title: 'Nathan Role',
-          caption: TROLL_IMAGE_CAPTION,
-          mime: 'image/png',
-          size_bytes: null,
-          width: null,
-          height: null,
-          visibility: 'troll_internal'
-        })
-        .eq('id', photoId);
+      const { data: trolled, error: updateError } = await supabase.rpc('admin_mark_photo_as_troll', {
+        p_photo_id: photoId
+      });
       if (updateError) return alert(updateError.message);
+      if (!trolled) return alert('Upload konnte nicht als Troll-Post markiert werden.');
+      await Promise.all([loadPendingReviews(), loadMyPhotos()]);
+    });
+  });
+
+  grid.querySelectorAll('[data-action="delete-review"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const photoId = Number(btn.dataset.id);
+      if (!confirm('Diesen Upload wirklich loeschen?')) return;
+      const { data: deleted, error: deleteError } = await supabase.rpc('admin_delete_photo', {
+        p_photo_id: photoId
+      });
+      if (deleteError) return alert(deleteError.message);
+      if (!deleted) return alert('Upload konnte nicht geloescht werden.');
       await Promise.all([loadPendingReviews(), loadMyPhotos()]);
     });
   });
@@ -796,6 +801,10 @@ function capabilityCard(title, stateLabel, copy) {
 }
 
 function photoStatusLabel(visibility) {
+  if (state.role === 'observer' && visibility === 'troll_internal') {
+    return 'Wartet auf Freigabe';
+  }
+
   const labels = {
     public: 'Oeffentlich',
     pending_review: 'Wartet auf Freigabe',
