@@ -115,7 +115,17 @@
   import { supabase, initPage } from './auth.js';
   await initPage('home');
 
+  const topBannerImg = document.querySelector('.top-banner img');
   const latestMedia = document.getElementById('latest-media');
+
+  const { data: bannerVariant } = await supabase.rpc('get_homepage_banner');
+  if (bannerVariant === 'sponsor') {
+    topBannerImg.src = 'images/banner.png';
+    topBannerImg.alt = 'die Ragebaiters Sponsor Banner';
+  } else {
+    topBannerImg.src = 'images/banner2.png';
+    topBannerImg.alt = 'die Ragebaiters Team Banner';
+  }
 
   const { data, error } = await supabase
     .from('photos_public')

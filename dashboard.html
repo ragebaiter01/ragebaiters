@@ -39,52 +39,231 @@
   </header>
 
   <main class="container">
-    <section class="section" id="mainSection" hidden>
-      <span class="eyebrow">Interner Bereich</span>
-      <h2 style="margin: 10px 0 4px;">Willkommen, <span id="hello">…</span></h2>
-      <p style="color: var(--muted); margin: 0 0 30px;">
-        Lade hier Fotos hoch. Sie erscheinen automatisch in der Mediathek.
-      </p>
-
-      <div class="card upload-card">
-        <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>
-
-        <div class="upload-meta">
-          <label class="field" for="captionInput">
-            <span>Bildtext</span>
-            <textarea
-              id="captionInput"
-              class="upload-caption-input"
-              maxlength="500"
-              placeholder="Optionaler Text zum Bild. Wenn du mehrere Bilder gleichzeitig auswählst, wird dieser Text für alle ausgewählten Bilder übernommen."
-            ></textarea>
-          </label>
-          <div class="upload-meta-hint">Maximal 500 Zeichen. Der Dateiname bleibt weiterhin der Bildtitel.</div>
-        </div>
-
-        <div class="upload-dropzone" id="dropzone">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-               stroke-linecap="round" stroke-linejoin="round" class="upload-icon">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
-          </svg>
-          <h3 style="margin: 10px 0 6px;">Bilder hier ablegen</h3>
-          <p style="color: var(--muted); margin: 0;">oder klicken zum Auswählen</p>
-          <p style="color: var(--muted); font-size: 0.8rem; margin-top: 10px;">
-            JPG, PNG, WebP, GIF · max. 8 MB pro Datei
-          </p>
-        </div>
-
-        <div id="uploadList" class="upload-list"></div>
-      </div>
-
-      <h3 style="margin: 50px 0 20px;">Meine Fotos (<span id="count">0</span>)</h3>
-      <div id="myPhotos"></div>
+    <section class="section" id="loading" style="text-align:center; color: var(--muted);">
+      Lade Dashboard...
     </section>
 
-    <section class="section" id="loading" style="text-align:center; color: var(--muted);">
-      Lade…
+    <section class="section" id="mainSection" hidden>
+      <span class="eyebrow">Interner Bereich</span>
+      <div class="dashboard-header">
+        <div>
+          <h2 style="margin: 10px 0 4px;">Willkommen, <span id="hello">...</span></h2>
+          <p style="color: var(--muted); margin: 0;">Verwalte hier Uploads, Einladungen, Startseiten-Banner und Benutzer.</p>
+        </div>
+        <div class="dashboard-role" id="roleBadge">Mitglied</div>
+      </div>
+
+      <div class="dashboard-shell">
+        <aside class="dashboard-sidebar card">
+          <div class="dashboard-sidebar-title">Bereiche</div>
+          <div class="dashboard-tabs" id="dashboardTabs">
+            <button type="button" class="dashboard-tab is-active" data-view="uploads">Uploads</button>
+            <button type="button" class="dashboard-tab admin-only" data-view="invites">Einladungscodes</button>
+            <button type="button" class="dashboard-tab admin-only" data-view="banner">Startseiten-Banner</button>
+            <button type="button" class="dashboard-tab admin-only" data-view="users">Benutzerverwaltung</button>
+          </div>
+          <div class="dashboard-sidebar-note" id="memberNote" hidden>
+            Du bist als Mitglied eingeloggt. Admin-Bereiche werden nur für Team-Admins freigeschaltet.
+          </div>
+        </aside>
+
+        <div class="dashboard-content">
+          <section class="dashboard-view is-active" id="view-uploads">
+            <div class="panel-head">
+              <div>
+                <h3>Uploads & Mediathek</h3>
+                <p>Lade hier Fotos hoch. Sie erscheinen automatisch in der Mediathek.</p>
+              </div>
+            </div>
+
+            <div class="card upload-card">
+              <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>
+
+              <div class="upload-meta">
+                <label class="field" for="captionInput">
+                  <span>Bildtext</span>
+                  <textarea
+                    id="captionInput"
+                    class="upload-caption-input"
+                    maxlength="500"
+                    placeholder="Optionaler Text zum Bild. Wenn du mehrere Bilder gleichzeitig auswaehlst, wird dieser Text fuer alle uebernommen."
+                  ></textarea>
+                </label>
+                <div class="upload-meta-hint">Maximal 500 Zeichen. Der Dateiname bleibt weiterhin der Bildtitel.</div>
+              </div>
+
+              <div class="upload-dropzone" id="dropzone">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" class="upload-icon">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <h3 style="margin: 10px 0 6px;">Bilder hier ablegen</h3>
+                <p style="color: var(--muted); margin: 0;">oder klicken zum Auswaehlen</p>
+                <p style="color: var(--muted); font-size: 0.8rem; margin-top: 10px;">
+                  JPG, PNG, WebP, GIF · max. 8 MB pro Datei
+                </p>
+              </div>
+
+              <div id="uploadList" class="upload-list"></div>
+            </div>
+
+            <div class="panel-head panel-head-spaced">
+              <div>
+                <h3>Meine Fotos (<span id="count">0</span>)</h3>
+                <p>Hier kannst du deine bereits hochgeladenen Bilder einsehen und loeschen.</p>
+              </div>
+            </div>
+            <div id="myPhotos"></div>
+          </section>
+
+          <section class="dashboard-view admin-view" id="view-invites" hidden>
+            <div class="panel-head">
+              <div>
+                <h3>Einladungscodes</h3>
+                <p>Codes erstellen, kopieren, loeschen und die Nutzung direkt kontrollieren.</p>
+              </div>
+              <button type="button" class="btn-secondary" id="refreshInvitesBtn">Aktualisieren</button>
+            </div>
+
+            <div class="stats-grid" id="inviteStats">
+              <article class="card stat-card">
+                <span>Offene Codes</span>
+                <strong id="inviteOpenCount">0</strong>
+              </article>
+              <article class="card stat-card">
+                <span>Bereits genutzt</span>
+                <strong id="inviteUsedCount">0</strong>
+              </article>
+              <article class="card stat-card">
+                <span>Gesamt</span>
+                <strong id="inviteTotalCount">0</strong>
+              </article>
+            </div>
+
+            <div class="card admin-card">
+              <div class="panel-head compact">
+                <div>
+                  <h3>Neuen Code erstellen</h3>
+                  <p>Entweder selbst eingeben oder automatisch generieren lassen.</p>
+                </div>
+              </div>
+              <form id="inviteForm" class="admin-form">
+                <div class="form-row">
+                  <label class="field">
+                    <span>Einladungscode</span>
+                    <input type="text" id="inviteCodeInput" maxlength="64" placeholder="z.B. TEAM-APRIL-2026">
+                  </label>
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn-secondary" id="generateInviteBtn">Code generieren</button>
+                  <button type="submit" class="btn-primary">Code erstellen</button>
+                </div>
+              </form>
+              <div class="admin-message" id="inviteMessage" hidden></div>
+            </div>
+
+            <div class="card admin-card">
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Code</th>
+                      <th>Status</th>
+                      <th>Erstellt</th>
+                      <th>Genutzt von</th>
+                      <th>Genutzt am</th>
+                      <th>Aktionen</th>
+                    </tr>
+                  </thead>
+                  <tbody id="inviteRows">
+                    <tr>
+                      <td colspan="6" class="table-empty">Noch keine Einladungscodes geladen.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <section class="dashboard-view admin-view" id="view-banner" hidden>
+            <div class="panel-head">
+              <div>
+                <h3>Startseiten-Banner</h3>
+                <p>Waehle aus, welches Banner oben auf der Startseite angezeigt wird.</p>
+              </div>
+            </div>
+
+            <div class="banner-settings-grid">
+              <label class="card banner-choice">
+                <input type="radio" name="homepageBanner" value="sponsor">
+                <div class="banner-choice-copy">
+                  <strong>Sponsor</strong>
+                  <span>Nutze das Sponsor-Banner auf der Startseite.</span>
+                </div>
+                <img src="images/banner.png" alt="Sponsor Banner Vorschau">
+              </label>
+
+              <label class="card banner-choice">
+                <input type="radio" name="homepageBanner" value="team">
+                <div class="banner-choice-copy">
+                  <strong>Team</strong>
+                  <span>Nutze das Team-Banner auf der Startseite.</span>
+                </div>
+                <img src="images/banner2.png" alt="Team Banner Vorschau">
+              </label>
+            </div>
+
+            <div class="card admin-card">
+              <div class="panel-head compact">
+                <div>
+                  <h3>Aktive Auswahl</h3>
+                  <p>Die Auswahl wird sofort fuer die Startseite gespeichert.</p>
+                </div>
+                <button type="button" class="btn-primary" id="saveBannerBtn">Banner speichern</button>
+              </div>
+              <div class="banner-preview-wrap">
+                <img id="bannerPreview" class="banner-preview-image" src="images/banner2.png" alt="Banner Vorschau">
+              </div>
+              <div class="admin-message" id="bannerMessage" hidden></div>
+            </div>
+          </section>
+
+          <section class="dashboard-view admin-view" id="view-users" hidden>
+            <div class="panel-head">
+              <div>
+                <h3>Benutzerverwaltung</h3>
+                <p>Alle Benutzer ansehen, Rollen anpassen, Benutzernamen aendern und Accounts loeschen.</p>
+              </div>
+              <button type="button" class="btn-secondary" id="refreshUsersBtn">Aktualisieren</button>
+            </div>
+
+            <div class="card admin-card">
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Benutzer</th>
+                      <th>E-Mail</th>
+                      <th>Rolle</th>
+                      <th>Erstellt</th>
+                      <th>Letzter Login</th>
+                      <th>Aktionen</th>
+                    </tr>
+                  </thead>
+                  <tbody id="userRows">
+                    <tr>
+                      <td colspan="6" class="table-empty">Noch keine Benutzer geladen.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="admin-message" id="userMessage" hidden></div>
+            </div>
+          </section>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -94,182 +273,6 @@
   </footer>
 
   <script src="config.js"></script>
-  <script type="module">
-    import { supabase, initPage, getSessionUser, getProfile } from './auth.js';
-    await initPage('dashboard');
-
-    const user = await getSessionUser();
-    if (!user) { location.href = 'login.html'; }
-
-    let profile = await getProfile(user.id);
-    if (!profile) {
-      profile = await ensureProfile(user);
-    }
-    document.getElementById('hello').textContent = profile?.username || user.email;
-    document.getElementById('loading').hidden = true;
-    document.getElementById('mainSection').hidden = false;
-
-    const MAX_BYTES = 8 * 1024 * 1024;
-    const ALLOWED_MIME = ['image/jpeg','image/png','image/webp','image/gif'];
-
-    const dropzone = document.getElementById('dropzone');
-    const fileInput = document.getElementById('fileInput');
-    const captionInput = document.getElementById('captionInput');
-    const listEl   = document.getElementById('uploadList');
-    const myPhotos = document.getElementById('myPhotos');
-    const countEl  = document.getElementById('count');
-
-    dropzone.addEventListener('click', () => fileInput.click());
-    ['dragover','dragenter'].forEach(ev => dropzone.addEventListener(ev, e => {
-      e.preventDefault(); dropzone.classList.add('is-dragover');
-    }));
-    ['dragleave','drop'].forEach(ev => dropzone.addEventListener(ev, e => {
-      e.preventDefault(); dropzone.classList.remove('is-dragover');
-    }));
-    dropzone.addEventListener('drop', e => {
-      if (e.dataTransfer?.files?.length) handle(e.dataTransfer.files);
-    });
-    fileInput.addEventListener('change', () => {
-      if (fileInput.files.length) handle(fileInput.files);
-      fileInput.value = '';
-    });
-
-    function handle(files) {
-      const caption = captionInput.value.trim().slice(0, 500);
-      [...files].forEach(file => uploadOne(file, caption));
-    }
-
-    async function uploadOne(file, caption) {
-      const row = document.createElement('div');
-      row.className = 'upload-row';
-      row.innerHTML = `
-        <div class="upload-row-name">${escapeHtml(file.name)}</div>
-        <div class="upload-row-bar"><span></span></div>
-        <div class="upload-row-status">0 %</div>`;
-      listEl.appendChild(row);
-      const bar = row.querySelector('.upload-row-bar span');
-      const status = row.querySelector('.upload-row-status');
-
-      if (!ALLOWED_MIME.includes(file.type)) return fail(row, status, 'Dateityp nicht erlaubt');
-      if (file.size > MAX_BYTES) return fail(row, status, 'Datei zu groß (max 8 MB)');
-
-      const ext  = (file.name.split('.').pop() || 'jpg').toLowerCase();
-      const key  = `${user.id}/${Date.now()}_${Math.random().toString(36).slice(2,8)}.${ext}`;
-
-      bar.style.width = '30%'; status.textContent = '30 %';
-
-      const { error: upErr } = await supabase.storage
-        .from('photos')
-        .upload(key, file, { cacheControl: '3600', contentType: file.type });
-      if (upErr) return fail(row, status, upErr.message);
-
-      bar.style.width = '70%'; status.textContent = '70 %';
-
-      // Bildgröße ermitteln
-      const dims = await readImageDims(file).catch(() => ({ width: null, height: null }));
-
-      const { error: dbErr } = await supabase.from('photos').insert({
-        user_id: user.id,
-        storage_path: key,
-        title: stripExt(file.name).slice(0, 160),
-        caption: caption || null,
-        mime: file.type,
-        size_bytes: file.size,
-        width: dims.width,
-        height: dims.height,
-      });
-      if (dbErr) return fail(row, status, dbErr.message);
-
-      bar.style.width = '100%';
-      status.textContent = '✓ fertig';
-      row.classList.add('is-done');
-      if (captionInput.value.trim() === caption) {
-        captionInput.value = '';
-      }
-      setTimeout(loadMyPhotos, 400);
-    }
-
-    function fail(row, status, msg) {
-      status.textContent = '✗ ' + msg;
-      row.classList.add('is-error');
-    }
-    function stripExt(n) { return n.replace(/\.[^.]+$/, ''); }
-    function readImageDims(file) {
-      return new Promise((res, rej) => {
-        const img = new Image();
-        img.onload  = () => res({ width: img.naturalWidth, height: img.naturalHeight });
-        img.onerror = rej;
-        img.src = URL.createObjectURL(file);
-      });
-    }
-
-    async function ensureProfile(user) {
-      const base = (user.user_metadata?.username || user.email?.split('@')[0] || 'member')
-        .replace(/[^A-Za-z0-9_.-]/g, '')
-        .slice(0, 24) || 'member';
-      const candidate = `${base}-${user.id.slice(0, 6)}`.slice(0, 32);
-      const payload = { id: user.id, username: candidate, role: 'member' };
-      const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' });
-      if (error) {
-        console.error('[Ragebaiters] Profil-Reparatur fehlgeschlagen:', error);
-        return null;
-      }
-      return payload;
-    }
-
-    async function loadMyPhotos() {
-      const { data, error } = await supabase
-        .from('photos')
-        .select('id, storage_path, title, caption, uploaded_at')
-        .eq('user_id', user.id)
-        .order('uploaded_at', { ascending: false });
-      if (error) {
-        myPhotos.innerHTML = '<div class="alert alert-error">' + escapeHtml(error.message) + '</div>';
-        return;
-      }
-      countEl.textContent = data.length;
-      if (!data.length) {
-        myPhotos.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Noch keine Bilder hochgeladen.</div>';
-        return;
-      }
-      myPhotos.innerHTML = '<div class="photo-grid"></div>';
-      const grid = myPhotos.querySelector('.photo-grid');
-      for (const p of data) {
-        const { data: pub } = supabase.storage.from('photos').getPublicUrl(p.storage_path);
-        const fig = document.createElement('figure');
-        fig.className = 'photo-item';
-        fig.innerHTML = `
-          <a href="${pub.publicUrl}" target="_blank" rel="noopener">
-            <img src="${pub.publicUrl}" alt="${escapeHtml(p.title || '')}" loading="lazy">
-          </a>
-          <figcaption>
-            <div class="photo-copy">
-              <span>${escapeHtml(p.title || '')}</span>
-              ${p.caption ? `<small>${escapeHtml(p.caption)}</small>` : ''}
-            </div>
-            <button class="btn-delete" type="button" data-id="${p.id}" data-path="${encodeURIComponent(p.storage_path)}" title="Löschen">✕</button>
-          </figcaption>`;
-        grid.appendChild(fig);
-      }
-      grid.querySelectorAll('.btn-delete').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          if (!confirm('Dieses Foto wirklich löschen?')) return;
-          const id   = Number(btn.dataset.id);
-          const path = decodeURIComponent(btn.dataset.path);
-          const { error: sErr } = await supabase.storage.from('photos').remove([path]);
-          if (sErr) return alert(sErr.message);
-          const { error: dErr } = await supabase.from('photos').delete().eq('id', id);
-          if (dErr) return alert(dErr.message);
-          loadMyPhotos();
-        });
-      });
-    }
-
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    }
-
-    loadMyPhotos();
-  </script>
+  <script type="module" src="dashboard.js"></script>
 </body>
 </html>
