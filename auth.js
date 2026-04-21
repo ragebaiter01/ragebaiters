@@ -58,6 +58,88 @@ const ICON_LOGOUT = `
     <line x1="21" y1="12" x2="9" y2="12"/>
   </svg>`;
 
+/* ----- Mobiles Menue ----- */
+function setupMobileNav() {
+  const nav = document.querySelector('.nav');
+  const navLinks = nav?.querySelector('.nav-links');
+  if (!nav || !navLinks || nav.dataset.mobileReady === '1') return;
+
+  nav.dataset.mobileReady = '1';
+
+  const titleEl = nav.firstElementChild;
+  if (titleEl) {
+    titleEl.classList.add('nav-title');
+
+    if (!titleEl.parentElement?.classList.contains('nav-brand')) {
+      const brand = document.createElement('div');
+      brand.className = 'nav-brand';
+      nav.insertBefore(brand, titleEl);
+      brand.appendChild(titleEl);
+    }
+  }
+
+  const brand = nav.querySelector('.nav-brand');
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'nav-toggle';
+  toggle.setAttribute('aria-label', 'Menue oeffnen');
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.setAttribute('aria-controls', 'mobile-navigation');
+  toggle.innerHTML = `
+    <span class="nav-toggle-bar"></span>
+    <span class="nav-toggle-bar"></span>
+    <span class="nav-toggle-bar"></span>`;
+
+  if (brand) brand.insertBefore(toggle, brand.firstChild);
+
+  if (!navLinks.id) navLinks.id = 'mobile-navigation';
+
+  let backdrop = document.querySelector('.nav-backdrop');
+  if (!backdrop) {
+    backdrop = document.createElement('button');
+    backdrop.type = 'button';
+    backdrop.className = 'nav-backdrop';
+    backdrop.setAttribute('aria-label', 'Menue schliessen');
+    document.body.appendChild(backdrop);
+  }
+
+  const closeMenu = () => {
+    document.body.classList.remove('nav-open');
+    navLinks.classList.remove('is-open');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-label', 'Menue oeffnen');
+  };
+
+  const openMenu = () => {
+    document.body.classList.add('nav-open');
+    navLinks.classList.add('is-open');
+    toggle.setAttribute('aria-expanded', 'true');
+    toggle.setAttribute('aria-label', 'Menue schliessen');
+  };
+
+  toggle.addEventListener('click', () => {
+    if (document.body.classList.contains('nav-open')) {
+      closeMenu();
+    } else {
+      openMenu();
+    }
+  });
+
+  backdrop.addEventListener('click', closeMenu);
+
+  navLinks.addEventListener('click', (event) => {
+    if (event.target.closest('a')) closeMenu();
+  });
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth >= 1000) closeMenu();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeMenu();
+  });
+}
+
 /* ----- Navigation + Footer dynamisch ----- */
 export async function renderAuthNav(active = '') {
   const nav    = document.querySelector('.nav-links');
@@ -123,6 +205,7 @@ export async function renderAuthNav(active = '') {
 
 /* ----- Auto-Init ----- */
 export async function initPage(active = '') {
+  setupMobileNav();
   await renderAuthNav(active);
   supabase.auth.onAuthStateChange(() => renderAuthNav(active));
 }
