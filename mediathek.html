@@ -72,7 +72,8 @@
 
     const { data, error } = await supabase
       .from('photos_public')
-      .select('id, storage_path, title, caption, author, uploaded_at');
+      .select('id, storage_path, title, caption, author, uploaded_at')
+      .order('uploaded_at', { ascending: false });
 
     if (error) {
       gallery.innerHTML = '<div class="alert alert-error">' + escapeHtml(error.message) + '</div>';
@@ -90,14 +91,7 @@
         fig.dataset.caption = p.caption || '';
         fig.dataset.author = p.author || '';
         fig.innerHTML = `
-          <img src="${pub.publicUrl}" alt="${escapeHtml(p.title || '')}" loading="lazy">
-          <figcaption>
-            <div class="photo-copy">
-              <span>${escapeHtml(p.title || '')}</span>
-              ${p.caption ? `<small>${escapeHtml(p.caption)}</small>` : ''}
-            </div>
-            <small>von ${escapeHtml(p.author || 'anonym')}</small>
-          </figcaption>`;
+          <img src="${pub.publicUrl}" alt="${escapeHtml(p.title || 'Mediathek Bild')}" loading="lazy">`;
         grid.appendChild(fig);
       }
       gallery.appendChild(grid);

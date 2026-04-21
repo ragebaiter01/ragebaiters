@@ -87,6 +87,22 @@
         </article>
       </div>
     </section>
+
+    <section class="section latest-media-section">
+      <div class="latest-media-head">
+        <div>
+          <span class="eyebrow">Mediathek</span>
+          <h2 style="margin: 10px 0 4px;">Neuester Post</h2>
+          <p style="color: var(--muted); margin: 0;">Hier erscheint automatisch immer der zuletzt hochgeladene Beitrag aus der Mediathek.</p>
+        </div>
+        <a href="mediathek.html">Zur Mediathek</a>
+      </div>
+      <div id="latest-media">
+        <article class="card latest-media-card">
+          <div class="latest-media-empty">Der neueste Beitrag wird geladen...</div>
+        </article>
+      </div>
+    </section>
   </main>
 
   <footer class="footer container">
@@ -96,8 +112,55 @@
 
 <script src="config.js"></script>
 <script type="module">
-  import { initPage } from './auth.js';
-  initPage('home');
+  import { supabase, initPage } from './auth.js';
+  await initPage('home');
+
+  const latestMedia = document.getElementById('latest-media');
+
+  const { data, error } = await supabase
+    .from('photos_public')
+    .select('id, storage_path, title, caption, author, uploaded_at')
+    .order('uploaded_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    latestMedia.innerHTML = '<article class="card latest-media-card"><div class="latest-media-empty">Der neueste Beitrag konnte gerade nicht geladen werden.</div></article>';
+  } else if (!data) {
+    latestMedia.innerHTML = '<article class="card latest-media-card"><div class="latest-media-empty">In der Mediathek wurde noch kein Beitrag hochgeladen.</div></article>';
+  } else {
+    const { data: pub } = supabase.storage.from('photos').getPublicUrl(data.storage_path);
+    latestMedia.innerHTML = `
+      <article class="card latest-media-card">
+        <div class="latest-media-grid">
+          <div class="latest-media-image-wrap">
+            <img class="latest-media-image" src="${pub.publicUrl}" alt="${escapeHtml(data.title || 'Neuester Mediathek-Post')}">
+          </div>
+          <div class="latest-media-copy">
+            <span class="latest-media-label">Zuletzt hochgeladen</span>
+            <h3>${escapeHtml(data.title || 'Neuer Mediathek-Post')}</h3>
+            ${data.caption ? `<p>${escapeHtml(data.caption)}</p>` : '<p>In der Mediathek ist ein neuer Beitrag verfuegbar.</p>'}
+            <div class="latest-media-meta">
+              <span>von ${escapeHtml(data.author || 'anonym')}</span>
+              <span>${formatDate(data.uploaded_at)}</span>
+            </div>
+          </div>
+        </div>
+      </article>`;
+  }
+
+  function formatDate(value) {
+    if (!value) return 'Unbekanntes Datum';
+    return new Date(value).toLocaleDateString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
 </script>
 </body>
 </html>
