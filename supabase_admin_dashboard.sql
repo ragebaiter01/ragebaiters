@@ -1,21 +1,37 @@
 -- Ragebaiters Admin Dashboard / Supabase Setup
--- Diese Datei im Supabase SQL Editor ausfuehren.
--- Enthält den Observer-Review-Workflow inkl. Admin-Troll-Aktion.
+-- Diese komplette Datei im Supabase SQL Editor ausfuehren.
+-- Enthaelt:
+-- - Rollen: observer, member, admin
+-- - Invite-Workflow
+-- - Banner-Einstellungen
+-- - Benutzerverwaltung
+-- - Observer-Upload-Review
+-- - Admin-Freigabe / Troll / Loeschen
+-- - Oeffentliche und interne Galerie-Logik
 
+drop view if exists public.photos_public;
+
+drop function if exists public.check_invite_code(text);
+drop function if exists public.redeem_invite(text);
+drop function if exists public.is_admin(uuid);
+drop function if exists public.current_user_role(uuid);
+drop function if exists public.get_homepage_banner();
+drop function if exists public.admin_set_homepage_banner(text);
 drop function if exists public.admin_list_invites();
 drop function if exists public.admin_create_invite(text);
 drop function if exists public.admin_create_invite(text, text);
 drop function if exists public.admin_create_invite(text, text, text);
+drop function if exists public.admin_delete_invite(text);
+drop function if exists public.admin_list_users();
 drop function if exists public.dashboard_list_members();
-drop function if exists public.redeem_invite(text);
+drop function if exists public.admin_update_user(uuid, text, text);
+drop function if exists public.admin_delete_user(uuid);
 drop function if exists public.create_photo_upload(text, text, text, bigint, integer, integer);
 drop function if exists public.admin_approve_photo(bigint);
 drop function if exists public.admin_mark_photo_as_troll(bigint);
 drop function if exists public.admin_delete_photo(bigint);
-drop view if exists public.photos_public;
 drop function if exists public.list_gallery_photos(boolean);
 drop function if exists public.get_latest_gallery_photo(boolean);
-drop function if exists public.can_view_nathan_posts(uuid);
 
 create table if not exists public.site_settings (
   key text primary key,
@@ -23,21 +39,6 @@ create table if not exists public.site_settings (
   updated_at timestamptz not null default now(),
   updated_by uuid references auth.users (id) on delete set null
 );
-
-update public.profiles
-set role = 'observer'
-where role = 'nathan';
-
-update public.invites
-set role = 'observer'
-where role = 'nathan';
-
-alter table public.profiles
-  drop constraint if exists profiles_role_check;
-
-alter table public.profiles
-  add constraint profiles_role_check
-  check (role in ('observer', 'member', 'admin'));
 
 insert into public.site_settings (key, value_text)
 values ('homepage_banner_variant', 'team')
@@ -48,8 +49,24 @@ alter table public.invites add column if not exists created_by uuid references a
 alter table public.invites add column if not exists used_at timestamptz;
 alter table public.invites add column if not exists used_by uuid references auth.users (id) on delete set null;
 alter table public.invites add column if not exists role text not null default 'member';
+
 alter table public.photos add column if not exists visibility text not null default 'public';
 alter table public.photos alter column visibility set default 'public';
+
+update public.profiles
+set role = 'observer'
+where role not in ('observer', 'member', 'admin');
+
+update public.invites
+set role = 'observer'
+where role not in ('observer', 'member', 'admin');
+
+alter table public.profiles
+  drop constraint if exists profiles_role_check;
+
+alter table public.profiles
+  add constraint profiles_role_check
+  check (role in ('observer', 'member', 'admin'));
 
 alter table public.invites
   drop constraint if exists invites_role_check;
@@ -64,13 +81,6 @@ alter table public.photos
 alter table public.photos
   add constraint photos_visibility_check
   check (visibility in ('public', 'pending_review', 'troll_internal'));
-
-update public.photos p
-set visibility = 'pending_review'
-from public.profiles pr
-where pr.id = p.user_id
-  and pr.role = 'observer'
-  and coalesce(p.visibility, 'public') = 'public';
 
 update public.photos
 set visibility = 'public'
@@ -337,6 +347,109 @@ as $$
   order by coalesce(p.username, split_part(u.email::text, '@', 1)) asc;
 $$;
 
+create or replace function public.admin_update_user(
+  p_user_id uuid,
+  p_username text,
+  p_role text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_username text;
+  v_role text;
+begin
+  if not public.is_admin() then
+    raise exception 'Nur Admins duerfen Benutzer bearbeiten.';
+  end if;
+
+  v_username := trim(coalesce(p_username, ''));
+  v_role := trim(coalesce(p_role, 'member'));
+
+  if v_username = '' then
+    raise exception 'Der Benutzername darf nicht leer sein.';
+  end if;
+
+  if length(v_username) < 3 or length(v_username) > 32 then
+    raise exception 'Der Benutzername muss zwischen 3 und 32 Zeichen lang sein.';
+  end if;
+
+  if v_username !~ '^[A-Za-z0-9_.-]+$' then
+    raise exception 'Der Benutzername enthaelt ungueltige Zeichen.';
+  end if;
+
+  if v_role not in ('observer', 'member', 'admin') then
+    raise exception 'Ungueltige Rolle.';
+  end if;
+
+  if exists (
+    select 1
+    from public.profiles
+    where username = v_username
+      and id <> p_user_id
+  ) then
+    raise exception 'Dieser Benutzername ist bereits vergeben.';
+  end if;
+
+  insert into public.profiles (id, username, role)
+  values (p_user_id, v_username, v_role)
+  on conflict (id) do update
+    set username = excluded.username,
+        role = excluded.role;
+
+  return true;
+end;
+$$;
+
+create or replace function public.admin_delete_user(p_user_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_deleted_count integer := 0;
+begin
+  if not public.is_admin() then
+    raise exception 'Nur Admins duerfen Benutzer loeschen.';
+  end if;
+
+  if p_user_id = auth.uid() then
+    raise exception 'Du kannst deinen eigenen Admin-Account hier nicht loeschen.';
+  end if;
+
+  delete from public.photos
+  where user_id = p_user_id;
+
+  delete from public.profiles
+  where id = p_user_id;
+
+  if to_regclass('auth.sessions') is not null then
+    execute 'delete from auth.sessions where user_id = $1' using p_user_id;
+  end if;
+
+  if to_regclass('auth.refresh_tokens') is not null then
+    execute 'delete from auth.refresh_tokens where user_id = $1' using p_user_id;
+  end if;
+
+  if to_regclass('auth.identities') is not null then
+    execute 'delete from auth.identities where user_id = $1' using p_user_id;
+  end if;
+
+  delete from auth.users
+  where id = p_user_id;
+
+  get diagnostics v_deleted_count = row_count;
+  if v_deleted_count = 0 then
+    raise exception 'Benutzer wurde im Auth-System nicht gefunden oder konnte nicht geloescht werden.';
+  end if;
+
+  return true;
+end;
+$$;
+
 create or replace function public.create_photo_upload(
   p_storage_path text,
   p_title text,
@@ -395,118 +508,6 @@ begin
   returning id into v_photo_id;
 
   return v_photo_id;
-end;
-$$;
-
-create or replace function public.list_gallery_photos(p_include_internal boolean default false)
-returns table (
-  id bigint,
-  storage_path text,
-  title text,
-  caption text,
-  author text,
-  uploaded_at timestamptz
-)
-language sql
-security definer
-set search_path = public
-stable
-as $$
-  select
-    p.id,
-    p.storage_path,
-    p.title,
-    p.caption,
-    coalesce(pr.username, 'anonym') as author,
-    p.uploaded_at
-  from public.photos p
-  left join public.profiles pr on pr.id = p.user_id
-  where p.visibility = 'public'
-     or (
-       p.visibility = 'troll_internal'
-       and p_include_internal
-       and auth.uid() is not null
-       and public.current_user_role() in ('observer', 'admin')
-     )
-  order by p.uploaded_at desc;
-$$;
-
-create or replace function public.get_latest_gallery_photo(p_include_internal boolean default false)
-returns table (
-  id bigint,
-  storage_path text,
-  title text,
-  caption text,
-  author text,
-  uploaded_at timestamptz
-)
-language sql
-security definer
-set search_path = public
-stable
-as $$
-  select *
-  from public.list_gallery_photos(p_include_internal)
-  limit 1;
-$$;
-
-create or replace view public.photos_public as
-select *
-from public.list_gallery_photos(false);
-
-create or replace function public.admin_update_user(
-  p_user_id uuid,
-  p_username text,
-  p_role text
-)
-returns boolean
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_username text;
-  v_role text;
-begin
-  if not public.is_admin() then
-    raise exception 'Nur Admins duerfen Benutzer bearbeiten.';
-  end if;
-
-  v_username := trim(coalesce(p_username, ''));
-  v_role := trim(coalesce(p_role, 'member'));
-
-  if v_username = '' then
-    raise exception 'Der Benutzername darf nicht leer sein.';
-  end if;
-
-  if length(v_username) < 3 or length(v_username) > 32 then
-    raise exception 'Der Benutzername muss zwischen 3 und 32 Zeichen lang sein.';
-  end if;
-
-  if v_username !~ '^[A-Za-z0-9_.-]+$' then
-    raise exception 'Der Benutzername enthaelt ungueltige Zeichen.';
-  end if;
-
-  if v_role not in ('observer', 'member', 'admin') then
-    raise exception 'Ungueltige Rolle.';
-  end if;
-
-  if exists (
-    select 1
-    from public.profiles
-    where username = v_username
-      and id <> p_user_id
-  ) then
-    raise exception 'Dieser Benutzername ist bereits vergeben.';
-  end if;
-
-  insert into public.profiles (id, username, role)
-  values (p_user_id, v_username, v_role)
-  on conflict (id) do update
-    set username = excluded.username,
-        role = excluded.role;
-
-  return true;
 end;
 $$;
 
@@ -573,75 +574,80 @@ begin
 end;
 $$;
 
-create or replace function public.admin_delete_user(p_user_id uuid)
-returns boolean
-language plpgsql
+create or replace function public.list_gallery_photos(p_include_internal boolean default false)
+returns table (
+  id bigint,
+  storage_path text,
+  title text,
+  caption text,
+  author text,
+  uploaded_at timestamptz
+)
+language sql
 security definer
 set search_path = public
+stable
 as $$
-declare
-  v_deleted_count integer := 0;
-begin
-  if not public.is_admin() then
-    raise exception 'Nur Admins duerfen Benutzer loeschen.';
-  end if;
-
-  if p_user_id = auth.uid() then
-    raise exception 'Du kannst deinen eigenen Admin-Account hier nicht loeschen.';
-  end if;
-
-  delete from storage.objects
-  where bucket_id = 'photos'
-    and name like p_user_id::text || '/%';
-
-  delete from public.photos
-  where user_id = p_user_id;
-
-  delete from public.profiles
-  where id = p_user_id;
-
-  if to_regclass('auth.sessions') is not null then
-    execute 'delete from auth.sessions where user_id = $1' using p_user_id;
-  end if;
-
-  if to_regclass('auth.refresh_tokens') is not null then
-    execute 'delete from auth.refresh_tokens where user_id = $1' using p_user_id;
-  end if;
-
-  if to_regclass('auth.identities') is not null then
-    execute 'delete from auth.identities where user_id = $1' using p_user_id;
-  end if;
-
-  delete from auth.users
-  where id = p_user_id;
-
-  get diagnostics v_deleted_count = row_count;
-  if v_deleted_count = 0 then
-    raise exception 'Benutzer wurde im Auth-System nicht gefunden oder konnte nicht geloescht werden.';
-  end if;
-
-  return true;
-end;
+  select
+    p.id,
+    p.storage_path,
+    p.title,
+    p.caption,
+    coalesce(pr.username, 'anonym') as author,
+    p.uploaded_at
+  from public.photos p
+  left join public.profiles pr on pr.id = p.user_id
+  where p.visibility = 'public'
+     or (
+       p.visibility = 'troll_internal'
+       and p_include_internal
+       and auth.uid() is not null
+       and public.current_user_role() in ('observer', 'admin')
+     )
+  order by p.uploaded_at desc;
 $$;
 
-grant execute on function public.get_homepage_banner() to anon, authenticated;
+create or replace function public.get_latest_gallery_photo(p_include_internal boolean default false)
+returns table (
+  id bigint,
+  storage_path text,
+  title text,
+  caption text,
+  author text,
+  uploaded_at timestamptz
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select *
+  from public.list_gallery_photos(p_include_internal)
+  limit 1;
+$$;
+
+create or replace view public.photos_public as
+select *
+from public.list_gallery_photos(false);
+
 grant execute on function public.check_invite_code(text) to anon, authenticated;
 grant execute on function public.redeem_invite(text) to authenticated;
 grant execute on function public.is_admin(uuid) to authenticated;
 grant execute on function public.current_user_role(uuid) to authenticated;
+grant execute on function public.get_homepage_banner() to anon, authenticated;
 grant execute on function public.admin_set_homepage_banner(text) to authenticated;
 grant execute on function public.admin_list_invites() to authenticated;
 grant execute on function public.admin_create_invite(text, text, text) to authenticated;
 grant execute on function public.admin_delete_invite(text) to authenticated;
 grant execute on function public.admin_list_users() to authenticated;
 grant execute on function public.dashboard_list_members() to authenticated;
-grant execute on function public.create_photo_upload(text, text, text, bigint, integer, integer) to authenticated;
-grant execute on function public.list_gallery_photos(boolean) to anon, authenticated;
-grant execute on function public.get_latest_gallery_photo(boolean) to anon, authenticated;
 grant execute on function public.admin_update_user(uuid, text, text) to authenticated;
+grant execute on function public.admin_delete_user(uuid) to authenticated;
+grant execute on function public.create_photo_upload(text, text, text, bigint, integer, integer) to authenticated;
 grant execute on function public.admin_approve_photo(bigint) to authenticated;
 grant execute on function public.admin_mark_photo_as_troll(bigint) to authenticated;
 grant execute on function public.admin_delete_photo(bigint) to authenticated;
-grant execute on function public.admin_delete_user(uuid) to authenticated;
+grant execute on function public.list_gallery_photos(boolean) to anon, authenticated;
+grant execute on function public.get_latest_gallery_photo(boolean) to anon, authenticated;
 
 grant select on public.photos_public to anon, authenticated;
