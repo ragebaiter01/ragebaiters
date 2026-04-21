@@ -575,15 +575,29 @@ async function loadUsers() {
       if (btn.disabled) return;
       const row = btn.closest('tr');
       const userId = row.dataset.userId;
+      if (!userId) {
+        setMessage(userMessage, 'Benutzer-ID fehlt. Bitte Liste neu laden und erneut versuchen.', 'error');
+        return;
+      }
       const username = row.querySelector('[data-field="username"]').value.trim() || 'dieses Konto';
       if (!confirm(`Benutzer ${username} wirklich loeschen?`)) return;
-      const { error: deleteError } = await supabase.rpc('admin_delete_user', { p_user_id: userId });
+
+      btn.disabled = true;
+      const { data: deleted, error: deleteError } = await supabase.rpc('admin_delete_user', { p_user_id: userId });
+      btn.disabled = false;
+
       if (deleteError) {
         setMessage(userMessage, `Benutzer konnte nicht geloescht werden: ${deleteError.message}`, 'error');
         return;
       }
+
+      if (!deleted) {
+        setMessage(userMessage, 'Benutzer konnte nicht geloescht werden. Bitte Seite neu laden und erneut versuchen.', 'error');
+        return;
+      }
+
       setMessage(userMessage, `Benutzer geloescht: ${username}`, 'success');
-      loadUsers();
+      await loadUsers();
     });
   });
 }

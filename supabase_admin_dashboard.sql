@@ -354,6 +354,8 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_deleted_count integer := 0;
 begin
   if not public.is_admin() then
     raise exception 'Nur Admins duerfen Benutzer loeschen.';
@@ -373,10 +375,27 @@ begin
   delete from public.profiles
   where id = p_user_id;
 
+  if to_regclass('auth.sessions') is not null then
+    execute 'delete from auth.sessions where user_id = $1' using p_user_id;
+  end if;
+
+  if to_regclass('auth.refresh_tokens') is not null then
+    execute 'delete from auth.refresh_tokens where user_id = $1' using p_user_id;
+  end if;
+
+  if to_regclass('auth.identities') is not null then
+    execute 'delete from auth.identities where user_id = $1' using p_user_id;
+  end if;
+
   delete from auth.users
   where id = p_user_id;
 
-  return found;
+  get diagnostics v_deleted_count = row_count;
+  if v_deleted_count = 0 then
+    raise exception 'Benutzer wurde im Auth-System nicht gefunden oder konnte nicht geloescht werden.';
+  end if;
+
+  return true;
 end;
 $$;
 
