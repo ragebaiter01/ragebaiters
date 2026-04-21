@@ -94,17 +94,7 @@ function setupMobileNav() {
 
   if (!navLinks.id) navLinks.id = 'mobile-navigation';
 
-  let backdrop = document.querySelector('.nav-backdrop');
-  if (!backdrop) {
-    backdrop = document.createElement('button');
-    backdrop.type = 'button';
-    backdrop.className = 'nav-backdrop';
-    backdrop.setAttribute('aria-label', 'Menue schliessen');
-    document.body.appendChild(backdrop);
-  }
-
   const closeMenu = () => {
-    document.body.classList.remove('nav-open');
     nav.classList.remove('is-open');
     navLinks.classList.remove('is-open');
     toggle.setAttribute('aria-expanded', 'false');
@@ -112,7 +102,6 @@ function setupMobileNav() {
   };
 
   const openMenu = () => {
-    document.body.classList.add('nav-open');
     nav.classList.add('is-open');
     navLinks.classList.add('is-open');
     toggle.setAttribute('aria-expanded', 'true');
@@ -120,14 +109,12 @@ function setupMobileNav() {
   };
 
   toggle.addEventListener('click', () => {
-    if (document.body.classList.contains('nav-open')) {
+    if (nav.classList.contains('is-open')) {
       closeMenu();
     } else {
       openMenu();
     }
   });
-
-  backdrop.addEventListener('click', closeMenu);
 
   navLinks.addEventListener('click', (event) => {
     if (event.target.closest('a')) closeMenu();

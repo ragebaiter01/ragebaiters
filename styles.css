@@ -585,12 +585,14 @@ h2 { font-size: clamp(1.8rem, 8vw, 3rem); font-weight: 900; line-height: 1.2; }
 }
 
 @media (max-width: 999px) {
-  body.nav-open {
-    overflow: hidden;
+  .nav {
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 14px 16px;
   }
 
-  .nav {
-    padding: 14px 16px;
+  .nav-brand {
+    width: 100%;
   }
 
   .nav-title {
@@ -601,36 +603,29 @@ h2 { font-size: clamp(1.8rem, 8vw, 3rem); font-weight: 900; line-height: 1.2; }
   }
 
   .nav-links {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    z-index: 140;
-    width: min(320px, calc(100vw - 44px));
-    margin: 0;
-    padding: 88px 18px 24px;
+    position: static;
+    z-index: auto;
+    width: 100%;
+    margin-top: 12px;
+    padding: 12px 0 0;
     display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    background:
-      linear-gradient(180deg, rgba(18,23,28,0.98) 0%, rgba(10,13,16,0.98) 100%);
-    border-right: 1px solid rgba(255,255,255,0.1);
-    box-shadow: 18px 0 48px rgba(0,0,0,0.45);
-    transform: translateX(-110%);
+    overflow: hidden;
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    transition: transform 0.32s ease;
-    scrollbar-width: thin;
+    max-height: 0;
+    border-top: 1px solid transparent;
+    transform: translateY(-8px);
+    transition: max-height 0.28s ease, opacity 0.22s ease, transform 0.22s ease, visibility 0.22s ease, border-color 0.22s ease;
   }
 
   .nav-links a {
     width: 100%;
     text-align: left;
-    justify-content: flex-start;
+    white-space: normal;
   }
 
   .nav-links .social-icon,
@@ -642,26 +637,23 @@ h2 { font-size: clamp(1.8rem, 8vw, 3rem); font-weight: 900; line-height: 1.2; }
 
   .nav.is-open .nav-links,
   .nav-links.is-open {
-    transform: translateX(0);
+    max-height: 560px;
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
+    border-top-color: rgba(255,255,255,0.08);
+    transform: translateY(0);
   }
 
-  body.nav-open .nav-backdrop {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  body.nav-open .nav-toggle-bar:nth-child(1) {
+  .nav.is-open .nav-toggle-bar:nth-child(1) {
     transform: translateY(6px) rotate(45deg);
   }
 
-  body.nav-open .nav-toggle-bar:nth-child(2) {
+  .nav.is-open .nav-toggle-bar:nth-child(2) {
     opacity: 0;
   }
 
-  body.nav-open .nav-toggle-bar:nth-child(3) {
+  .nav.is-open .nav-toggle-bar:nth-child(3) {
     transform: translateY(-6px) rotate(-45deg);
   }
 }
