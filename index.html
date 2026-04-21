@@ -129,7 +129,7 @@
 
   const currentUser = await getSessionUser();
   const currentProfile = currentUser ? await getProfile(currentUser.id) : null;
-  const currentRole = normalizeRole(currentProfile?.role);
+  const currentRole = currentUser ? normalizeRole(currentProfile?.role) : 'guest';
   const canSeeInternalPosts = currentRole === 'admin' || currentRole === 'observer';
   const { data, error } = await supabase.rpc('get_latest_gallery_photo', {
     p_include_internal: canSeeInternalPosts
@@ -175,7 +175,7 @@
   }
 
   function normalizeRole(role) {
-    return ['observer', 'member', 'admin'].includes(role) ? role : 'observer';
+    return ['observer', 'member', 'admin'].includes(role) ? role : 'guest';
   }
 
   function resolvePhotoUrl(path) {

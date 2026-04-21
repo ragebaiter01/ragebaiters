@@ -71,8 +71,9 @@
     const gallery = document.getElementById('gallery');
     const currentUser = await getSessionUser();
     const currentProfile = currentUser ? await getProfile(currentUser.id) : null;
-    const currentRole = normalizeRole(currentProfile?.role);
+    const currentRole = currentUser ? normalizeRole(currentProfile?.role) : 'guest';
     const canSeeInternalPosts = currentRole === 'admin' || currentRole === 'observer';
+    const isAdmin = currentRole === 'admin';
 
     const { data, error } = await supabase.rpc('list_gallery_photos', {
       p_include_internal: canSeeInternalPosts
@@ -91,14 +92,37 @@
         const fig = document.createElement('figure');
         fig.className = 'photo-item';
         fig.dataset.full = imageUrl;
+        fig.dataset.id = p.id;
+        fig.dataset.path = p.storage_path;
         fig.dataset.title = p.title || '';
         fig.dataset.caption = p.caption || '';
         fig.dataset.author = p.author || '';
         fig.innerHTML = `
-          <img src="${imageUrl}" alt="${escapeHtml(p.title || 'Mediathek Bild')}" loading="lazy">`;
+          <img src="${imageUrl}" alt="${escapeHtml(p.title || 'Mediathek Bild')}" loading="lazy">
+          ${isAdmin ? '<button class="btn-delete" type="button" title="Loeschen">x</button>' : ''}`;
         grid.appendChild(fig);
       }
       gallery.appendChild(grid);
+      if (isAdmin) {
+        grid.querySelectorAll('.btn-delete').forEach(btn => {
+          btn.addEventListener('click', async (event) => {
+            event.stopPropagation();
+            const fig = btn.closest('.photo-item');
+            const photoId = Number(fig?.dataset.id);
+            if (!photoId) return;
+            if (!confirm('Dieses Bild wirklich aus der Mediathek loeschen?')) return;
+            const { data: deleted, error: deleteError } = await supabase.rpc('admin_delete_photo', {
+              p_photo_id: photoId
+            });
+            if (deleteError) return alert(deleteError.message);
+            if (!deleted) return alert('Bild konnte nicht geloescht werden.');
+            fig.remove();
+            if (!grid.querySelector('.photo-item')) {
+              gallery.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Es wurden noch keine Fotos hochgeladen.</div>';
+            }
+          });
+        });
+      }
       initLightbox(grid);
     }
 
@@ -146,7 +170,7 @@
     }
 
     function normalizeRole(role) {
-      return ['observer', 'member', 'admin'].includes(role) ? role : 'observer';
+      return ['observer', 'member', 'admin'].includes(role) ? role : 'guest';
     }
 
     function resolvePhotoUrl(path) {

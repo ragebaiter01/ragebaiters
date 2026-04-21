@@ -148,8 +148,12 @@ set search_path = public
 stable
 as $$
   select coalesce(
+    case
+      when coalesce(p_user_id, auth.uid()) is null then 'guest'
+      else null
+    end,
     (select role from public.profiles where id = coalesce(p_user_id, auth.uid())),
-    'observer'
+    'guest'
   );
 $$;
 
@@ -359,6 +363,7 @@ as $$
      or (
        p.visibility = 'troll_internal'
        and p_include_internal
+       and auth.uid() is not null
        and public.current_user_role() in ('observer', 'admin')
      )
   order by p.uploaded_at desc;
