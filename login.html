@@ -75,7 +75,7 @@
 
   <script src="config.js"></script>
   <script type="module">
-    import { supabase, initPage, getSessionUser, buildScopedUrl } from './auth.js';
+    import { supabase, initPage, getSessionUser, buildScopedUrl, waitForSessionUser } from './auth.js';
     await initPage('login');
 
     // Wenn bereits eingeloggt -> Dashboard
@@ -104,6 +104,16 @@
         btn.textContent = 'Anmelden';
         return;
       }
+
+      const readyUser = await waitForSessionUser();
+      if (!readyUser) {
+        alertE.textContent = 'Session wurde nicht rechtzeitig geladen. Bitte noch einmal anmelden.';
+        alertE.hidden = false;
+        btn.disabled = false;
+        btn.textContent = 'Anmelden';
+        return;
+      }
+
       location.href = buildScopedUrl('dashboard.html');
     });
 

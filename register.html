@@ -90,7 +90,7 @@
 
   <script src="config.js"></script>
   <script type="module">
-    import { supabase, initPage, getSessionUser, buildScopedUrl } from './auth.js';
+    import { supabase, initPage, getSessionUser, buildScopedUrl, waitForSessionUser } from './auth.js';
     await initPage('login');
 
     if (await getSessionUser()) location.href = buildScopedUrl('dashboard.html');
@@ -163,6 +163,9 @@
         id: uid, username: user, role: inviteRole
       }, { onConflict: 'id' });
       if (profErr) return fail('Profil konnte nicht angelegt werden: ' + profErr.message);
+
+      const readyUser = await waitForSessionUser();
+      if (!readyUser) return fail('Session wurde nicht rechtzeitig geladen. Bitte erneut anmelden.');
 
       location.href = buildScopedUrl('dashboard.html');
     });

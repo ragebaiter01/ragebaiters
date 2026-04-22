@@ -34,6 +34,22 @@ export async function getSessionUser() {
   return data.session?.user || null;
 }
 
+export async function waitForSessionUser(timeoutMs = 2500, stepMs = 125) {
+  await handoffReady;
+
+  const deadline = Date.now() + Math.max(0, Number(timeoutMs) || 0);
+  let user = await getSessionUser();
+  if (user) return user;
+
+  while (Date.now() < deadline) {
+    await delay(stepMs);
+    user = await getSessionUser();
+    if (user) return user;
+  }
+
+  return null;
+}
+
 export async function getProfile(userId) {
   await handoffReady;
   const { data, error } = await supabase
@@ -374,4 +390,8 @@ function escapeAttr(value) {
     '"': '&quot;',
     "'": '&#39;'
   }[char]));
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
