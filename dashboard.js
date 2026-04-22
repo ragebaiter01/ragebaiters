@@ -1,4 +1,4 @@
-import { supabase, initPage, getSessionUser, getProfile, buildScopedUrl, waitForSessionUser, restorePendingSessionUser } from './auth.js';
+import { supabase, initPage, getSessionUser, getProfile, buildScopedUrl, waitForSessionUser, restorePendingSessionUser } from './auth.js?v=2026-04-22-3';
 
 await initPage('dashboard');
 

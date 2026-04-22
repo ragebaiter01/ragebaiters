@@ -79,7 +79,7 @@ export async function restorePendingSessionUser(maxAgeMs = 60_000) {
     return null;
   }
 
-  const { error } = await supabase.auth.setSession({
+  const { data, error } = await supabase.auth.setSession({
     access_token: payload.access_token,
     refresh_token: payload.refresh_token
   });
@@ -90,7 +90,7 @@ export async function restorePendingSessionUser(maxAgeMs = 60_000) {
     return null;
   }
 
-  return getSessionUser();
+  return data?.session?.user || data?.user || getSessionUser();
 }
 
 export async function getProfile(userId) {
