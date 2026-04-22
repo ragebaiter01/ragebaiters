@@ -488,6 +488,166 @@ begin
 end;
 $$;
 
+-- ============================================================
+-- Testaccount fuer Admin-Vorschau
+-- Erlaubt Admins, einen getrennten Observer-Testaccount in
+-- einem neuen Tab zu oeffnen, ohne ihren eigenen Login zu verlieren.
+-- ============================================================
+
+create table if not exists public.site_settings (
+  key text primary key,
+  value_text text not null,
+  updated_at timestamptz not null default now(),
+  updated_by uuid references auth.users (id) on delete set null
+);
+
+insert into public.site_settings (key, value_text)
+values
+  ('test_account_email', 'testaccount@ragebaiters.local'),
+  ('test_account_username', 'testaccount-preview'),
+  ('test_account_role', 'observer')
+on conflict (key) do nothing;
+
+create or replace function public.admin_get_test_account_access()
+returns table (
+  email text,
+  password text,
+  username text,
+  role text
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_email text;
+  v_password text;
+  v_username text;
+  v_role text;
+begin
+  if not public.is_admin() then
+    raise exception 'Nur Admins duerfen den Testaccount oeffnen.';
+  end if;
+
+  select value_text into v_email
+  from public.site_settings
+  where key = 'test_account_email';
+
+  select value_text into v_username
+  from public.site_settings
+  where key = 'test_account_username';
+
+  select value_text into v_role
+  from public.site_settings
+  where key = 'test_account_role';
+
+  select value_text into v_password
+  from public.site_settings
+  where key = 'test_account_password';
+
+  if coalesce(v_password, '') = '' then
+    v_password := substr(
+      replace(gen_random_uuid()::text, '-', '') ||
+      replace(gen_random_uuid()::text, '-', ''),
+      1,
+      28
+    ) || 'A9!';
+
+    insert into public.site_settings (key, value_text, updated_at, updated_by)
+    values ('test_account_password', v_password, now(), auth.uid())
+    on conflict (key) do update
+      set value_text = excluded.value_text,
+          updated_at = now(),
+          updated_by = auth.uid();
+  end if;
+
+  return query
+  select
+    coalesce(v_email, 'testaccount@ragebaiters.local'),
+    v_password,
+    coalesce(v_username, 'testaccount-preview'),
+    coalesce(v_role, 'observer');
+end;
+$$;
+
+create or replace function public.admin_prepare_test_account(
+  p_email text,
+  p_username text default 'testaccount-preview',
+  p_role text default 'observer'
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_email text;
+  v_username text;
+  v_role text;
+  v_user_id uuid;
+begin
+  if not public.is_admin() then
+    raise exception 'Nur Admins duerfen den Testaccount vorbereiten.';
+  end if;
+
+  v_email := lower(trim(coalesce(p_email, '')));
+  v_username := trim(coalesce(p_username, 'testaccount-preview'));
+  v_role := trim(coalesce(p_role, 'observer'));
+
+  if v_email = '' then
+    raise exception 'Die Testaccount-E-Mail fehlt.';
+  end if;
+
+  if v_role not in ('observer', 'member', 'admin') then
+    raise exception 'Ungueltige Testaccount-Rolle.';
+  end if;
+
+  select id
+  into v_user_id
+  from auth.users
+  where lower(email::text) = v_email
+  order by created_at desc
+  limit 1;
+
+  if v_user_id is null then
+    return false;
+  end if;
+
+  if exists (
+    select 1
+    from public.profiles
+    where username = v_username
+      and id <> v_user_id
+  ) then
+    v_username := left(v_username || '-' || substr(replace(v_user_id::text, '-', ''), 1, 6), 32);
+  end if;
+
+  update auth.users
+  set email_confirmed_at = coalesce(email_confirmed_at, now()),
+      raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('username', v_username),
+      updated_at = now()
+  where id = v_user_id;
+
+  insert into public.profiles (id, username, role)
+  values (v_user_id, v_username, v_role)
+  on conflict (id) do update
+    set username = excluded.username,
+        role = excluded.role;
+
+  return true;
+end;
+$$;
+
+grant execute on function public.admin_get_test_account_access() to authenticated;
+grant execute on function public.admin_prepare_test_account(text, text, text) to authenticated;
+
+-- Optionaler Schnelltest nach dem Ausfuehren:
+-- select proname
+-- from pg_proc
+-- join pg_namespace n on n.oid = pg_proc.pronamespace
+-- where n.nspname = 'public'
+--   and proname in ('admin_get_test_account_access', 'admin_prepare_test_account');
+
 create or replace function public.admin_delete_photo(p_photo_id bigint)
 returns boolean
 language plpgsql
