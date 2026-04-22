@@ -40,6 +40,59 @@ export async function getProfile(userId) {
   return data;
 }
 
+export function isLocalPhotoPath(path) {
+  return String(path || '').startsWith('__local__/');
+}
+
+export async function getPhotoUrl(path, expiresIn = 3600) {
+  if (isLocalPhotoPath(path)) {
+    return path.replace('__local__/', '');
+  }
+
+  const { data, error } = await supabase.storage
+    .from('photos')
+    .createSignedUrl(path, expiresIn);
+
+  if (error) {
+    console.error('[Ragebaiters] Signierte Bild-URL konnte nicht erstellt werden:', error);
+    return '';
+  }
+
+  return data?.signedUrl || '';
+}
+
+export async function getPhotoUrls(paths, expiresIn = 3600) {
+  const uniquePaths = [...new Set((paths || []).filter(Boolean))];
+  const urlMap = new Map();
+
+  const remotePaths = [];
+  uniquePaths.forEach(path => {
+    if (isLocalPhotoPath(path)) {
+      urlMap.set(path, path.replace('__local__/', ''));
+    } else {
+      remotePaths.push(path);
+    }
+  });
+
+  if (!remotePaths.length) return urlMap;
+
+  const { data, error } = await supabase.storage
+    .from('photos')
+    .createSignedUrls(remotePaths, expiresIn);
+
+  if (error) {
+    console.error('[Ragebaiters] Signierte Bild-URLs konnten nicht erstellt werden:', error);
+    return urlMap;
+  }
+
+  remotePaths.forEach((path, index) => {
+    const signedUrl = data?.[index]?.signedUrl || '';
+    if (signedUrl) urlMap.set(path, signedUrl);
+  });
+
+  return urlMap;
+}
+
 /* ----- SVG-Icons ----- */
 const ICON_DASHBOARD = `
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"

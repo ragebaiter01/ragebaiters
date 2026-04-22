@@ -65,7 +65,7 @@
 
   <script src="config.js"></script>
   <script type="module">
-    import { supabase, initPage, getSessionUser, getProfile } from './auth.js';
+    import { supabase, initPage, getSessionUser, getProfile, getPhotoUrls } from './auth.js';
     await initPage('mediathek');
 
     const gallery = document.getElementById('gallery');
@@ -74,32 +74,42 @@
     const currentRole = normalizeRole(currentProfile?.role);
     const canSeeNathanPosts = currentRole === 'admin' || currentRole === 'nathan';
 
-    const { data, error } = await supabase.rpc('list_gallery_photos', {
-      p_include_nathan: canSeeNathanPosts
-    });
-    const photos = Array.isArray(data) ? data : [];
-
-    if (error) {
-      gallery.innerHTML = '<div class="alert alert-error">' + escapeHtml(error.message) + '</div>';
-    } else if (!photos.length) {
-      gallery.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Es wurden noch keine Fotos hochgeladen.</div>';
+    if (!currentUser) {
+      gallery.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Bitte melde dich an, um die interne Mediathek zu sehen.</div>';
     } else {
-      const grid = document.createElement('div');
-      grid.className = 'photo-grid lightbox-grid';
-      for (const p of photos) {
-        const imageUrl = resolvePhotoUrl(p.storage_path);
-        const fig = document.createElement('figure');
-        fig.className = 'photo-item';
-        fig.dataset.full = imageUrl;
-        fig.dataset.title = p.title || '';
-        fig.dataset.caption = p.caption || '';
-        fig.dataset.author = p.author || '';
-        fig.innerHTML = `
-          <img src="${imageUrl}" alt="${escapeHtml(p.title || 'Mediathek Bild')}" loading="lazy">`;
-        grid.appendChild(fig);
+      const { data, error } = await supabase.rpc('list_gallery_photos', {
+        p_include_nathan: canSeeNathanPosts
+      });
+      const photos = Array.isArray(data) ? data : [];
+
+      if (error) {
+        gallery.innerHTML = '<div class="alert alert-error">' + escapeHtml(error.message) + '</div>';
+      } else if (!photos.length) {
+        gallery.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Es wurden noch keine Fotos hochgeladen.</div>';
+      } else {
+        const urlMap = await getPhotoUrls(photos.map(photo => photo.storage_path));
+        const grid = document.createElement('div');
+        grid.className = 'photo-grid lightbox-grid';
+        for (const p of photos) {
+          const imageUrl = urlMap.get(p.storage_path) || '';
+          if (!imageUrl) continue;
+          const fig = document.createElement('figure');
+          fig.className = 'photo-item';
+          fig.dataset.full = imageUrl;
+          fig.dataset.title = p.title || '';
+          fig.dataset.caption = p.caption || '';
+          fig.dataset.author = p.author || '';
+          fig.innerHTML = `
+            <img src="${imageUrl}" alt="${escapeHtml(p.title || 'Mediathek Bild')}" loading="lazy">`;
+          grid.appendChild(fig);
+        }
+        if (!grid.children.length) {
+          gallery.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Die Bilder konnten gerade nicht geladen werden.</div>';
+        } else {
+          gallery.appendChild(grid);
+          initLightbox(grid);
+        }
       }
-      gallery.appendChild(grid);
-      initLightbox(grid);
     }
 
     function initLightbox(grid) {
@@ -149,13 +159,6 @@
       return ['observer', 'member', 'nathan', 'admin'].includes(role) ? role : 'observer';
     }
 
-    function resolvePhotoUrl(path) {
-      if (String(path || '').startsWith('__local__/')) {
-        return path.replace('__local__/', '');
-      }
-      const { data: pub } = supabase.storage.from('photos').getPublicUrl(path);
-      return pub.publicUrl;
-    }
   </script>
 </body>
 </html>

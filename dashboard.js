@@ -1,9 +1,10 @@
-import { supabase, initPage, getSessionUser, getProfile } from './auth.js';
+import { supabase, initPage, getSessionUser, getProfile, getPhotoUrls, isLocalPhotoPath } from './auth.js';
 
 await initPage('dashboard');
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const MAX_FILES_PER_BATCH = 10;
 const NATHAN_ROLE_SENTINEL = '__local__/images/nathanrole.png';
 const NATHAN_ROLE_CAPTION = 'schabbat schalom';
 const BANNER_OPTIONS = {
@@ -28,7 +29,8 @@ const fileInput = document.getElementById('fileInput');
 const captionInput = document.getElementById('captionInput');
 const uploadList = document.getElementById('uploadList');
 const myPhotos = document.getElementById('myPhotos');
-const countEl = document.getElementById('count');
+const photoSectionTitle = document.getElementById('photoSectionTitle');
+const photoSectionIntro = document.getElementById('photoSectionIntro');
 
 const inviteForm = document.getElementById('inviteForm');
 const inviteCodeInput = document.getElementById('inviteCodeInput');
@@ -239,6 +241,11 @@ function setupWelcome() {
 
 function setupUserSectionCopy() {
   if (state.isAdmin) {
+    photoSectionTitle.innerHTML = 'Mediathek verwalten (<span id="count">0</span>)';
+    photoSectionIntro.textContent = 'Als Admin siehst du hier alle hochgeladenen Bilder und kannst sie direkt loeschen.';
+  }
+
+  if (state.isAdmin) {
     usersTitle.textContent = 'Benutzerverwaltung';
     usersIntro.textContent = 'Alle Benutzer ansehen, Rollen anpassen, Benutzernamen aendern und Accounts loeschen.';
     return;
@@ -252,7 +259,9 @@ function handleUploadFiles(files) {
   const caption = state.role === 'nathan'
     ? NATHAN_ROLE_CAPTION
     : captionInput.value.trim().slice(0, 500);
-  const uploadFiles = state.role === 'nathan' ? [...files].slice(0, 1) : [...files];
+  const uploadFiles = state.role === 'nathan'
+    ? [...files].slice(0, 1)
+    : [...files].slice(0, MAX_FILES_PER_BATCH);
   uploadFiles.forEach(file => uploadOne(file, caption));
 }
 
@@ -275,6 +284,7 @@ async function uploadOne(file, caption) {
   status.textContent = '30 %';
 
   let key = null;
+  let uploadFile = file;
   let mime = file.type;
   let sizeBytes = file.size;
   let dims = await readImageDims(file).catch(() => ({ width: null, height: null }));
@@ -293,19 +303,27 @@ async function uploadOne(file, caption) {
     bar.style.width = '70%';
     status.textContent = '70 %';
   } else {
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-    key = `${state.user.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    // Client-seitig neu rendern, um EXIF/Metadaten zu entfernen (kein Sicherheitsersatz für RLS/Policies, aber sinnvoll)
+    const sanitized = await sanitizeUploadImage(file);
+    uploadFile = sanitized.file;
+    mime = sanitized.mime;
+    sizeBytes = uploadFile.size;
+    dims = await readImageDims(uploadFile).catch(() => dims);
 
-    const { error: uploadError } = await supabase.storage
-      .from('photos')
-      .upload(key, file, { cacheControl: '3600', contentType: file.type });
-    if (uploadError) return failUpload(row, status, uploadError.message);
+    if (!ALLOWED_MIME.includes(mime)) return failUpload(row, status, 'Dateityp nicht erlaubt');
+    if (uploadFile.size > MAX_BYTES) return failUpload(row, status, 'Datei zu gross (max. 8 MB)');
+
+    const ext = extFromMime(mime);
+    const nonce = Math.random().toString(36).slice(2, 8).toLowerCase();
+    key = `${state.user.id}/${Date.now()}_${nonce}.${ext}`;
 
     bar.style.width = '70%';
     status.textContent = '70 %';
   }
 
-  const { error: dbError } = await supabase.from('photos').insert({
+  // WICHTIG: Erst DB-Insert, dann Storage-Upload.
+  // Dadurch kann Storage per Policy erzwingen, dass ein passender DB-Row existiert (Anti-Spam / Anti-Abuse).
+  const { data: inserted, error: dbError } = await supabase.from('photos').insert({
     user_id: state.user.id,
     storage_path: key,
     title,
@@ -315,8 +333,20 @@ async function uploadOne(file, caption) {
     width: dims.width,
     height: dims.height,
     visibility
-  });
+  }).select('id').maybeSingle();
   if (dbError) return failUpload(row, status, dbError.message);
+
+  if (state.role !== 'nathan') {
+    const { error: uploadError } = await supabase.storage
+      .from('photos')
+      .upload(key, uploadFile, { cacheControl: '3600', contentType: mime, upsert: false });
+
+    if (uploadError) {
+      // DB-Row wieder entfernen, wenn Storage-Upload fehlschlägt
+      await supabase.from('photos').delete().eq('user_id', state.user.id).eq('storage_path', key);
+      return failUpload(row, status, uploadError.message);
+    }
+  }
 
   bar.style.width = '100%';
   status.textContent = 'fertig';
@@ -331,57 +361,79 @@ function failUpload(row, status, message) {
 }
 
 async function loadMyPhotos() {
-  const { data, error } = await supabase
-    .from('photos')
-    .select('id, storage_path, title, caption, uploaded_at')
-    .eq('user_id', state.user.id)
-    .order('uploaded_at', { ascending: false });
+  const photoSource = state.isAdmin
+    ? await supabase.rpc('admin_list_photos')
+    : await supabase
+      .from('photos')
+      .select('id, storage_path, title, caption, uploaded_at')
+      .eq('user_id', state.user.id)
+      .order('uploaded_at', { ascending: false });
+
+  const { data, error } = photoSource;
 
   if (error) {
     myPhotos.innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
     return;
   }
 
-  countEl.textContent = data.length;
-  if (!data.length) {
-    myPhotos.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Noch keine Bilder hochgeladen.</div>';
+  const photos = Array.isArray(data) ? data : [];
+  const countNode = document.getElementById('count');
+  if (countNode) countNode.textContent = String(photos.length);
+
+  if (!photos.length) {
+    myPhotos.innerHTML = `<div class="card" style="text-align:center; color: var(--muted);">${state.isAdmin ? 'Es sind noch keine Bilder in der Mediathek vorhanden.' : 'Noch keine Bilder hochgeladen.'}</div>`;
     return;
   }
 
+  const urlMap = await getPhotoUrls(photos.map(photo => photo.storage_path));
   myPhotos.innerHTML = '<div class="photo-grid"></div>';
   const grid = myPhotos.querySelector('.photo-grid');
-  for (const photo of data) {
-    const publicUrl = resolvePhotoUrl(photo.storage_path);
+  for (const photo of photos) {
+    const imageUrl = urlMap.get(photo.storage_path) || '';
+    if (!imageUrl) continue;
     const fig = document.createElement('figure');
     fig.className = 'photo-item';
-    const actions = state.isAdmin
-      ? `<button class="btn-delete" type="button" data-id="${photo.id}" data-path="${encodeURIComponent(photo.storage_path)}" title="Loeschen">x</button>`
+    const metaLine = state.isAdmin
+      ? `<small>${escapeHtml(photo.author || 'anonym')} · ${photo.visibility === 'nathan_only' ? 'nur intern' : 'oeffentlich'}</small>`
       : '';
+    const actions = `<button class="btn-delete" type="button" data-id="${photo.id}" data-path="${encodeURIComponent(photo.storage_path)}" title="Loeschen">x</button>`;
     fig.innerHTML = `
-      <a href="${publicUrl}" target="_blank" rel="noopener">
-        <img src="${publicUrl}" alt="${escapeHtml(photo.title || '')}" loading="lazy">
+      <a href="${imageUrl}" target="_blank" rel="noopener">
+        <img src="${imageUrl}" alt="${escapeHtml(photo.title || '')}" loading="lazy">
       </a>
       <figcaption>
         <div class="photo-copy">
           <span>${escapeHtml(photo.title || '')}</span>
           ${photo.caption ? `<small>${escapeHtml(photo.caption)}</small>` : ''}
+          ${metaLine}
         </div>
         ${actions}
       </figcaption>`;
     grid.appendChild(fig);
   }
 
+  if (!grid.children.length) {
+    myPhotos.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Die Bilder konnten gerade nicht geladen werden.</div>';
+    return;
+  }
+
   grid.querySelectorAll('.btn-delete').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm('Dieses Foto wirklich loeschen?')) return;
       const id = Number(btn.dataset.id);
-      const path = decodeURIComponent(btn.dataset.path);
-      if (!isLocalPhotoPath(path)) {
-        const { error: storageError } = await supabase.storage.from('photos').remove([path]);
-        if (storageError) return alert(storageError.message);
+      if (state.isAdmin) {
+        const { data: deleted, error: deleteError } = await supabase.rpc('admin_delete_photo', { p_photo_id: id });
+        if (deleteError) return alert(deleteError.message);
+        if (!deleted) return alert('Foto konnte nicht geloescht werden.');
+      } else {
+        const path = decodeURIComponent(btn.dataset.path);
+        if (!isLocalPhotoPath(path)) {
+          const { error: storageError } = await supabase.storage.from('photos').remove([path]);
+          if (storageError) return alert(storageError.message);
+        }
+        const { error: dbError } = await supabase.from('photos').delete().eq('id', id);
+        if (dbError) return alert(dbError.message);
       }
-      const { error: dbError } = await supabase.from('photos').delete().eq('id', id);
-      if (dbError) return alert(dbError.message);
       loadMyPhotos();
     });
   });
@@ -665,6 +717,38 @@ function stripExt(name) {
   return name.replace(/\.[^.]+$/, '');
 }
 
+function extFromMime(mime) {
+  if (mime === 'image/jpeg') return 'jpg';
+  if (mime === 'image/png') return 'png';
+  if (mime === 'image/webp') return 'webp';
+  if (mime === 'image/gif') return 'gif';
+  return 'jpg';
+}
+
+async function sanitizeUploadImage(file) {
+  // GIF nicht anfassen (Animation); andere Formate als WebP neu rendern -> entfernt Metadaten/EXIF zuverlässig.
+  try {
+    if (!file || file.type === 'image/gif') return { file, mime: file?.type || 'application/octet-stream' };
+    if (!file.type || !file.type.startsWith('image/')) return { file, mime: file.type || 'application/octet-stream' };
+
+    const bitmap = await createImageBitmap(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d', { alpha: true });
+    ctx.drawImage(bitmap, 0, 0);
+
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', 0.92));
+    if (!blob) return { file, mime: file.type };
+
+    const outName = `${stripExt(file.name)}.webp`;
+    const outFile = new File([blob], outName, { type: 'image/webp' });
+    return { file: outFile, mime: 'image/webp' };
+  } catch {
+    return { file, mime: file?.type || 'application/octet-stream' };
+  }
+}
+
 function readImageDims(file) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -700,18 +784,6 @@ function roleLabel(role) {
     admin: 'Admin'
   };
   return labels[normalizeRole(role)] || 'Beobachter';
-}
-
-function isLocalPhotoPath(path) {
-  return String(path || '').startsWith('__local__/');
-}
-
-function resolvePhotoUrl(path) {
-  if (isLocalPhotoPath(path)) {
-    return path.replace('__local__/', '');
-  }
-  const { data: pub } = supabase.storage.from('photos').getPublicUrl(path);
-  return pub.publicUrl;
 }
 
 function capabilityCard(title, stateLabel, copy) {

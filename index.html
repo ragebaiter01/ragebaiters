@@ -82,7 +82,7 @@
           <div class="contact-box">
             <h3 style="margin:0; color: var(--accent);">Interesse? Meld dich!</h3>
             <p>Schreib uns jederzeit – wir freuen uns!</p>
-            <a href="mailto:Ragebaiters@gmx.de" style="background:transparent; border:1px solid var(--accent); color:var(--accent)!important; text-transform:none; width:100%; text-align:center;">✉ Ragebaiters@gmx.de</a>
+            <a href="mailto:info@ragebaiters.de" style="background:transparent; border:1px solid var(--accent); color:var(--accent)!important; text-transform:none; width:100%; text-align:center;">✉ info@ragebaiters.de</a>
           </div>
         </article>
       </div>
@@ -112,53 +112,62 @@
 
 <script src="config.js"></script>
 <script type="module">
-  import { supabase, initPage, getSessionUser, getProfile } from './auth.js';
+  import { supabase, initPage, getSessionUser, getProfile, getPhotoUrl } from './auth.js';
   await initPage('home');
 
   const topBannerImg = document.querySelector('.top-banner img');
   const latestMedia = document.getElementById('latest-media');
-
-  const { data: bannerVariant } = await supabase.rpc('get_homepage_banner');
-  if (bannerVariant === 'sponsor') {
-    topBannerImg.src = 'images/banner.png';
-    topBannerImg.alt = 'die Ragebaiters Sponsor Banner';
-  } else {
-    topBannerImg.src = 'images/banner2.png';
-    topBannerImg.alt = 'die Ragebaiters Team Banner';
-  }
-
   const currentUser = await getSessionUser();
   const currentProfile = currentUser ? await getProfile(currentUser.id) : null;
   const currentRole = normalizeRole(currentProfile?.role);
   const canSeeNathanPosts = currentRole === 'admin' || currentRole === 'nathan';
-  const { data, error } = await supabase.rpc('get_latest_gallery_photo', {
-    p_include_nathan: canSeeNathanPosts
-  });
-  const latestPhoto = Array.isArray(data) ? data[0] : data;
 
-  if (error) {
-    latestMedia.innerHTML = '<article class="card latest-media-card"><div class="latest-media-empty">Der neueste Beitrag konnte gerade nicht geladen werden.</div></article>';
-  } else if (!latestPhoto) {
-    latestMedia.innerHTML = '<article class="card latest-media-card"><div class="latest-media-empty">In der Mediathek wurde noch kein Beitrag hochgeladen.</div></article>';
+  if (currentUser) {
+    const { data: bannerVariant } = await supabase.rpc('get_homepage_banner');
+    if (bannerVariant === 'sponsor') {
+      topBannerImg.src = 'images/banner.png';
+      topBannerImg.alt = 'die Ragebaiters Sponsor Banner';
+    } else {
+      topBannerImg.src = 'images/banner2.png';
+      topBannerImg.alt = 'die Ragebaiters Team Banner';
+    }
+  }
+  if (!currentUser) {
+    latestMedia.innerHTML = '<article class="card latest-media-card"><div class="latest-media-empty">Bitte melde dich an, um interne Mediathek-Inhalte zu sehen.</div></article>';
   } else {
-    const imageUrl = resolvePhotoUrl(latestPhoto.storage_path);
-    latestMedia.innerHTML = `
-      <article class="card latest-media-card">
-        <div class="latest-media-grid">
-          <div class="latest-media-image-wrap">
-            <img class="latest-media-image" src="${imageUrl}" alt="${escapeHtml(latestPhoto.title || 'Neuester Mediathek-Post')}">
-          </div>
-          <div class="latest-media-copy">
-            <span class="latest-media-label">Zuletzt hochgeladen</span>
-            <h3>${escapeHtml(latestPhoto.title || 'Neuer Mediathek-Post')}</h3>
-            ${latestPhoto.caption ? `<p>${escapeHtml(latestPhoto.caption)}</p>` : '<p>In der Mediathek ist ein neuer Beitrag verfuegbar.</p>'}
-            <div class="latest-media-meta">
-              <span>von ${escapeHtml(latestPhoto.author || 'anonym')}</span>
-              <span>${formatDate(latestPhoto.uploaded_at)}</span>
+    const { data, error } = await supabase.rpc('get_latest_gallery_photo', {
+      p_include_nathan: canSeeNathanPosts
+    });
+    const latestPhoto = Array.isArray(data) ? data[0] : data;
+
+    if (error) {
+      latestMedia.innerHTML = '<article class="card latest-media-card"><div class="latest-media-empty">Der neueste Beitrag konnte gerade nicht geladen werden.</div></article>';
+    } else if (!latestPhoto) {
+      latestMedia.innerHTML = '<article class="card latest-media-card"><div class="latest-media-empty">In der Mediathek wurde noch kein Beitrag hochgeladen.</div></article>';
+    } else {
+      const imageUrl = await getPhotoUrl(latestPhoto.storage_path);
+      if (!imageUrl) {
+        latestMedia.innerHTML = '<article class="card latest-media-card"><div class="latest-media-empty">Der neueste Beitrag konnte gerade nicht geladen werden.</div></article>';
+      } else {
+        latestMedia.innerHTML = `
+          <article class="card latest-media-card">
+            <div class="latest-media-grid">
+              <div class="latest-media-image-wrap">
+                <img class="latest-media-image" src="${imageUrl}" alt="${escapeHtml(latestPhoto.title || 'Neuester Mediathek-Post')}">
+              </div>
+              <div class="latest-media-copy">
+                <span class="latest-media-label">Zuletzt hochgeladen</span>
+                <h3>${escapeHtml(latestPhoto.title || 'Neuer Mediathek-Post')}</h3>
+                ${latestPhoto.caption ? `<p>${escapeHtml(latestPhoto.caption)}</p>` : '<p>In der Mediathek ist ein neuer Beitrag verfuegbar.</p>'}
+                <div class="latest-media-meta">
+                  <span>von ${escapeHtml(latestPhoto.author || 'anonym')}</span>
+                  <span>${formatDate(latestPhoto.uploaded_at)}</span>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      </article>`;
+          </article>`;
+      }
+    }
   }
 
   function formatDate(value) {
@@ -178,13 +187,6 @@
     return ['observer', 'member', 'nathan', 'admin'].includes(role) ? role : 'observer';
   }
 
-  function resolvePhotoUrl(path) {
-    if (String(path || '').startsWith('__local__/')) {
-      return path.replace('__local__/', '');
-    }
-    const { data: pub } = supabase.storage.from('photos').getPublicUrl(path);
-    return pub.publicUrl;
-  }
 </script>
 </body>
 </html>

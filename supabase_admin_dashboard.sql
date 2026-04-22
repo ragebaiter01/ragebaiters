@@ -11,6 +11,8 @@ drop function if exists public.redeem_invite(text);
 drop view if exists public.photos_public;
 drop function if exists public.list_gallery_photos(boolean);
 drop function if exists public.get_latest_gallery_photo(boolean);
+drop function if exists public.admin_list_photos();
+drop function if exists public.admin_delete_photo(bigint);
 
 create table if not exists public.site_settings (
   key text primary key,
@@ -29,6 +31,19 @@ alter table public.profiles
 insert into public.site_settings (key, value_text)
 values ('homepage_banner_variant', 'team')
 on conflict (key) do nothing;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'photos',
+  'photos',
+  false,
+  8388608,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/gif']::text[]
+)
+on conflict (id) do update
+  set public = excluded.public,
+      file_size_limit = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
 
 alter table public.invites add column if not exists created_at timestamptz not null default now();
 alter table public.invites add column if not exists created_by uuid references auth.users (id) on delete set null;
@@ -380,6 +395,72 @@ create or replace view public.photos_public as
 select *
 from public.list_gallery_photos(false);
 
+create or replace function public.admin_list_photos()
+returns table (
+  id bigint,
+  user_id uuid,
+  storage_path text,
+  title text,
+  caption text,
+  author text,
+  visibility text,
+  uploaded_at timestamptz
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select
+    p.id,
+    p.user_id,
+    p.storage_path,
+    p.title,
+    p.caption,
+    coalesce(pr.username, 'anonym') as author,
+    p.visibility,
+    p.uploaded_at
+  from public.photos p
+  left join public.profiles pr on pr.id = p.user_id
+  where public.is_admin()
+  order by p.uploaded_at desc;
+$$;
+
+create or replace function public.admin_delete_photo(p_photo_id bigint)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_storage_path text;
+begin
+  if not public.is_admin() then
+    raise exception 'Nur Admins duerfen Mediathek-Bilder loeschen.';
+  end if;
+
+  select storage_path
+  into v_storage_path
+  from public.photos
+  where id = p_photo_id;
+
+  if v_storage_path is null then
+    return false;
+  end if;
+
+  if left(v_storage_path, 10) <> '__local__/' then
+    delete from storage.objects
+    where bucket_id = 'photos'
+      and name = v_storage_path;
+  end if;
+
+  delete from public.photos
+  where id = p_photo_id;
+
+  return found;
+end;
+$$;
+
 create or replace function public.admin_update_user(
   p_user_id uuid,
   p_username text,
@@ -487,9 +568,109 @@ begin
 end;
 $$;
 
-grant execute on function public.get_homepage_banner() to anon, authenticated;
+alter table public.photos enable row level security;
+alter table storage.objects enable row level security;
+
+drop policy if exists photos_select_own on public.photos;
+create policy photos_select_own
+on public.photos
+for select
+to authenticated
+using (user_id = auth.uid());
+
+drop policy if exists photos_insert_own on public.photos;
+create policy photos_insert_own
+on public.photos
+for insert
+to authenticated
+with check (
+  user_id = auth.uid()
+  and visibility in ('public', 'nathan_only')
+  and (
+    storage_path like auth.uid()::text || '/%'
+    or storage_path like '__local__/%'
+  )
+);
+
+drop policy if exists photos_delete_own on public.photos;
+create policy photos_delete_own
+on public.photos
+for delete
+to authenticated
+using (user_id = auth.uid());
+
+drop policy if exists photos_read_signed on storage.objects;
+create policy photos_read_signed
+on storage.objects
+for select
+to authenticated
+using (
+  bucket_id = 'photos'
+  and exists (
+    select 1
+    from public.photos p
+    where p.storage_path = storage.objects.name
+      and (
+        p.user_id = auth.uid()
+        or p.visibility = 'public'
+        or (p.visibility = 'nathan_only' and public.can_view_nathan_posts())
+      )
+  )
+);
+
+drop policy if exists photos_upload_own on storage.objects;
+create policy photos_upload_own
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'photos'
+  and exists (
+    select 1
+    from public.photos p
+    where p.storage_path = storage.objects.name
+      and p.user_id = auth.uid()
+  )
+);
+
+drop policy if exists photos_delete_own_or_admin on storage.objects;
+create policy photos_delete_own_or_admin
+on storage.objects
+for delete
+to authenticated
+using (
+  bucket_id = 'photos'
+  and exists (
+    select 1
+    from public.photos p
+    where p.storage_path = storage.objects.name
+      and (p.user_id = auth.uid() or public.is_admin())
+  )
+);
+
+revoke execute on function public.get_homepage_banner() from public, anon;
+revoke execute on function public.check_invite_code(text) from public;
+revoke execute on function public.redeem_invite(text) from public;
+revoke execute on function public.is_admin(uuid) from public;
+revoke execute on function public.current_user_role(uuid) from public;
+revoke execute on function public.can_view_nathan_posts(uuid) from public;
+revoke execute on function public.admin_set_homepage_banner(text) from public;
+revoke execute on function public.admin_list_invites() from public;
+revoke execute on function public.admin_create_invite(text, text, text) from public;
+revoke execute on function public.admin_delete_invite(text) from public;
+revoke execute on function public.admin_list_users() from public;
+revoke execute on function public.dashboard_list_members() from public;
+revoke execute on function public.list_gallery_photos(boolean) from public, anon;
+revoke execute on function public.get_latest_gallery_photo(boolean) from public, anon;
+revoke execute on function public.admin_list_photos() from public;
+revoke execute on function public.admin_update_user(uuid, text, text) from public;
+revoke execute on function public.admin_delete_photo(bigint) from public;
+revoke execute on function public.admin_delete_user(uuid) from public;
+revoke select on public.photos_public from public, anon;
+
 grant execute on function public.check_invite_code(text) to anon, authenticated;
 grant execute on function public.redeem_invite(text) to authenticated;
+grant execute on function public.get_homepage_banner() to authenticated;
 grant execute on function public.is_admin(uuid) to authenticated;
 grant execute on function public.current_user_role(uuid) to authenticated;
 grant execute on function public.can_view_nathan_posts(uuid) to authenticated;
@@ -499,9 +680,11 @@ grant execute on function public.admin_create_invite(text, text, text) to authen
 grant execute on function public.admin_delete_invite(text) to authenticated;
 grant execute on function public.admin_list_users() to authenticated;
 grant execute on function public.dashboard_list_members() to authenticated;
-grant execute on function public.list_gallery_photos(boolean) to anon, authenticated;
-grant execute on function public.get_latest_gallery_photo(boolean) to anon, authenticated;
+grant execute on function public.list_gallery_photos(boolean) to authenticated;
+grant execute on function public.get_latest_gallery_photo(boolean) to authenticated;
+grant execute on function public.admin_list_photos() to authenticated;
 grant execute on function public.admin_update_user(uuid, text, text) to authenticated;
+grant execute on function public.admin_delete_photo(bigint) to authenticated;
 grant execute on function public.admin_delete_user(uuid) to authenticated;
 
-grant select on public.photos_public to anon, authenticated;
+grant select on public.photos_public to authenticated;
