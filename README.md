@@ -18,7 +18,7 @@ Kein PHP, keine eigene Datenbank. Supabase übernimmt:
 
 ### 2. Schema importieren
 1. Im Supabase-Dashboard links auf **SQL Editor** klicken.
-2. Inhalt von `supabase-setup.sql` (aus diesem ZIP) komplett einfügen.
+2. Inhalt von `supabase_admin_dashboard.sql` komplett einfügen.
 3. **Run** drücken.
 
 Dabei werden automatisch angelegt:
@@ -26,6 +26,11 @@ Dabei werden automatisch angelegt:
 - View `photos_public`
 - Storage-Bucket `photos` (öffentlich lesbar)
 - Der erste Einladungscode: **`TEAM-RAGEBAIT-2026`**
+
+### 2b. Security-Hardening (sehr empfohlen)
+Danach im SQL Editor einmal `supabase_security_hardening.sql` ausführen.
+Das zieht RLS-Policies für DB + Storage hart und stoppt u.a. Massenuploads.
+Siehe auch: `SECURITY_CHECKLIST.md` und `INCIDENT_RESPONSE.md`.
 
 ### 3. API-Keys kopieren
 1. Links auf **Project Settings** → **API**.
@@ -73,7 +78,8 @@ ragebaiters.de/
 ├── script.js           Team-Modal
 ├── config.js           ← deine Supabase-Zugangsdaten (du füllst sie aus)
 ├── auth.js             Supabase-Client + dynamische Nav
-├── supabase-setup.sql  Schema für Supabase (einmalig importieren)
+├── supabase_admin_dashboard.sql  Schema für Supabase (einmalig importieren)
+├── supabase_security_hardening.sql  Security-Hardening (Policies + Limits)
 └── images/             deine bestehenden Logos und Banner
 ```
 

@@ -4,6 +4,7 @@ await initPage('dashboard');
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const MAX_FILES_PER_BATCH = 10;
 const NATHAN_ROLE_SENTINEL = '__local__/images/nathanrole.png';
 const NATHAN_ROLE_CAPTION = 'schabbat schalom';
 const BANNER_OPTIONS = {
@@ -252,7 +253,9 @@ function handleUploadFiles(files) {
   const caption = state.role === 'nathan'
     ? NATHAN_ROLE_CAPTION
     : captionInput.value.trim().slice(0, 500);
-  const uploadFiles = state.role === 'nathan' ? [...files].slice(0, 1) : [...files];
+  const uploadFiles = state.role === 'nathan'
+    ? [...files].slice(0, 1)
+    : [...files].slice(0, MAX_FILES_PER_BATCH);
   uploadFiles.forEach(file => uploadOne(file, caption));
 }
 
@@ -275,6 +278,7 @@ async function uploadOne(file, caption) {
   status.textContent = '30 %';
 
   let key = null;
+  let uploadFile = file;
   let mime = file.type;
   let sizeBytes = file.size;
   let dims = await readImageDims(file).catch(() => ({ width: null, height: null }));
@@ -293,19 +297,27 @@ async function uploadOne(file, caption) {
     bar.style.width = '70%';
     status.textContent = '70 %';
   } else {
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-    key = `${state.user.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    // Client-seitig neu rendern, um EXIF/Metadaten zu entfernen (kein Sicherheitsersatz für RLS/Policies, aber sinnvoll)
+    const sanitized = await sanitizeUploadImage(file);
+    uploadFile = sanitized.file;
+    mime = sanitized.mime;
+    sizeBytes = uploadFile.size;
+    dims = await readImageDims(uploadFile).catch(() => dims);
 
-    const { error: uploadError } = await supabase.storage
-      .from('photos')
-      .upload(key, file, { cacheControl: '3600', contentType: file.type });
-    if (uploadError) return failUpload(row, status, uploadError.message);
+    if (!ALLOWED_MIME.includes(mime)) return failUpload(row, status, 'Dateityp nicht erlaubt');
+    if (uploadFile.size > MAX_BYTES) return failUpload(row, status, 'Datei zu gross (max. 8 MB)');
+
+    const ext = extFromMime(mime);
+    const nonce = Math.random().toString(36).slice(2, 8).toLowerCase();
+    key = `${state.user.id}/${Date.now()}_${nonce}.${ext}`;
 
     bar.style.width = '70%';
     status.textContent = '70 %';
   }
 
-  const { error: dbError } = await supabase.from('photos').insert({
+  // WICHTIG: Erst DB-Insert, dann Storage-Upload.
+  // Dadurch kann Storage per Policy erzwingen, dass ein passender DB-Row existiert (Anti-Spam / Anti-Abuse).
+  const { data: inserted, error: dbError } = await supabase.from('photos').insert({
     user_id: state.user.id,
     storage_path: key,
     title,
@@ -315,8 +327,20 @@ async function uploadOne(file, caption) {
     width: dims.width,
     height: dims.height,
     visibility
-  });
+  }).select('id').maybeSingle();
   if (dbError) return failUpload(row, status, dbError.message);
+
+  if (state.role !== 'nathan') {
+    const { error: uploadError } = await supabase.storage
+      .from('photos')
+      .upload(key, uploadFile, { cacheControl: '3600', contentType: mime, upsert: false });
+
+    if (uploadError) {
+      // DB-Row wieder entfernen, wenn Storage-Upload fehlschlägt
+      await supabase.from('photos').delete().eq('user_id', state.user.id).eq('storage_path', key);
+      return failUpload(row, status, uploadError.message);
+    }
+  }
 
   bar.style.width = '100%';
   status.textContent = 'fertig';
@@ -663,6 +687,38 @@ function buildInviteCode() {
 
 function stripExt(name) {
   return name.replace(/\.[^.]+$/, '');
+}
+
+function extFromMime(mime) {
+  if (mime === 'image/jpeg') return 'jpg';
+  if (mime === 'image/png') return 'png';
+  if (mime === 'image/webp') return 'webp';
+  if (mime === 'image/gif') return 'gif';
+  return 'jpg';
+}
+
+async function sanitizeUploadImage(file) {
+  // GIF nicht anfassen (Animation); andere Formate als WebP neu rendern -> entfernt Metadaten/EXIF zuverlässig.
+  try {
+    if (!file || file.type === 'image/gif') return { file, mime: file?.type || 'application/octet-stream' };
+    if (!file.type || !file.type.startsWith('image/')) return { file, mime: file.type || 'application/octet-stream' };
+
+    const bitmap = await createImageBitmap(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d', { alpha: true });
+    ctx.drawImage(bitmap, 0, 0);
+
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', 0.92));
+    if (!blob) return { file, mime: file.type };
+
+    const outName = `${stripExt(file.name)}.webp`;
+    const outFile = new File([blob], outName, { type: 'image/webp' });
+    return { file: outFile, mime: 'image/webp' };
+  } catch {
+    return { file, mime: file?.type || 'application/octet-stream' };
+  }
 }
 
 function readImageDims(file) {

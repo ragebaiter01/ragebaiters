@@ -116,10 +116,10 @@
 
       if (pw !== pw2) return fail('Passwörter stimmen nicht überein.');
 
-      // 1) Username bereits vergeben?
-      const { data: existing } = await supabase
-        .from('profiles').select('id').eq('username', user).maybeSingle();
-      if (existing) return fail('Benutzername bereits vergeben.');
+      // 1) Username bereits vergeben? (RPC statt direktem Table-Read)
+      const { data: usernameOk, error: usernameErr } = await supabase.rpc('is_username_available', { p_username: user });
+      if (usernameErr) return fail('Benutzername konnte nicht geprÃƒÂ¼ft werden: ' + usernameErr.message);
+      if (!usernameOk) return fail('Benutzername bereits vergeben oder ungÃƒÂ¼ltig.');
 
       // 2) Einladungscode vorab prÃ¼fen, damit kein Auth-Account ohne Invite entsteht
       const { data: inviteOk, error: inviteErr } = await supabase.rpc('check_invite_code', { p_code: invite });
