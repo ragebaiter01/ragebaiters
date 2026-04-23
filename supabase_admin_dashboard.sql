@@ -15,6 +15,13 @@ drop view if exists public.photos_public;
 drop function if exists public.list_gallery_photos(boolean);
 drop function if exists public.get_latest_gallery_photo(boolean);
 drop function if exists public.can_view_nathan_posts(uuid);
+drop function if exists public.admin_get_test_account_access();
+drop function if exists public.admin_rotate_test_account_access(text);
+drop function if exists public.resolve_login_email(text);
+drop function if exists public.hard_delete_user_account(uuid);
+drop function if exists public.admin_cleanup_expired_test_accounts(text);
+drop function if exists public.get_homepage_instagram_post();
+drop function if exists public.admin_set_homepage_instagram_post(text, text, text, text, timestamptz, text);
 
 create table if not exists public.site_settings (
   key text primary key,
