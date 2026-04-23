@@ -15,7 +15,14 @@
 
   <header class="container">
     <nav class="nav">
-      <div style="font-weight: 900; font-size: 1.6rem;">die Ragebaiters</div>
+      <div class="nav-brand">
+        <div class="nav-title">die Ragebaiters</div>
+      </div>
+      <button class="nav-toggle" type="button" aria-label="Menü" aria-expanded="false">
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+      </button>
       <div class="nav-links">
         <a class="active" href="index.html">Startseite</a>
         <a href="team.html">Team</a>
@@ -35,6 +42,7 @@
         </a>
       </div>
     </nav>
+    <div class="nav-backdrop" aria-hidden="true"></div>
   </header>
 
   <main class="container">
@@ -82,9 +90,7 @@
           <div class="contact-box">
             <h3 style="margin:0; color: var(--accent);">Interesse? Meld dich!</h3>
             <p>Schreib uns jederzeit – wir freuen uns!</p>
-            <a id="contactMailLink" href="mailto:info@ragebaiters.de" onclick="window.location.href='mailto:info@ragebaiters.de';" style="background:transparent; border:1px solid var(--accent); color:var(--accent)!important; text-transform:none; width:100%; text-align:center;">✉ info@ragebaiters.de</a>
-            <button type="button" onclick="navigator.clipboard.writeText('info@ragebaiters.de').then(() => alert('E-Mail-Adresse kopiert: info@ragebaiters.de'), () => prompt('Bitte E-Mail kopieren:', 'info@ragebaiters.de'));" style="margin-top:10px; width:100%; padding:12px 16px; background:rgba(255,255,255,0.06); color:var(--text); border:1px solid var(--line); border-radius:12px; font-weight:800; cursor:pointer;">E-Mail kopieren</button>
-            <a href="https://mail.google.com/mail/?view=cm&fs=1&to=info@ragebaiters.de" target="_blank" rel="noopener" style="display:block; margin-top:10px; width:100%; padding:12px 16px; background:rgba(255,255,255,0.06); color:var(--text)!important; border:1px solid var(--line); border-radius:12px; font-weight:800; text-align:center; text-transform:none;">Im Webmail schreiben</a>
+            <a href="mailto:info@ragebaiters.de" style="background:transparent; border:1px solid var(--accent); color:var(--accent)!important; text-transform:none; width:100%; text-align:center;">✉ info@ragebaiters.de</a>
           </div>
         </article>
       </div>
@@ -105,6 +111,22 @@
         </article>
       </div>
     </section>
+
+    <section class="section instagram-section">
+      <div class="latest-media-head">
+        <div>
+          <span class="eyebrow">Instagram</span>
+          <h2 style="margin: 10px 0 4px;">Neuester Instagram-Beitrag</h2>
+          <p style="color: var(--muted); margin: 0;">Der Bereich ist jetzt im Design der Seite vorbereitet und kann spaeter direkt an eine Live-Instagram-Datenquelle angebunden werden.</p>
+        </div>
+        <a href="https://www.instagram.com/die_ragebaiters/" target="_blank" rel="noopener">Instagram oeffnen</a>
+      </div>
+      <div id="instagram-latest">
+        <article class="card instagram-post-card">
+          <div class="latest-media-empty">Instagram-Beitrag wird geladen...</div>
+        </article>
+      </div>
+    </section>
   </main>
 
   <footer class="footer container">
@@ -112,13 +134,16 @@
     <div style="font-size: 0.8rem; opacity: 0.6;">Est. 2026 • Made by sneiper0</div>
   </footer>
 
+<script src="nav.js?v=2026-04-23-1" defer></script>
 <script src="config.js"></script>
 <script type="module">
-  import { supabase, initPage, getSessionUser, getProfile } from './auth.js?v=2026-04-22-3';
+    import { supabase, initPage, getSessionUser, getProfile } from './auth.js?v=2026-04-23-1';
   await initPage('home');
 
   const topBannerImg = document.querySelector('.top-banner img');
   const latestMedia = document.getElementById('latest-media');
+  const instagramLatest = document.getElementById('instagram-latest');
+  const instagramProfileUrl = 'https://www.instagram.com/die_ragebaiters/';
 
   const { data: bannerVariant } = await supabase.rpc('get_homepage_banner');
   if (bannerVariant === 'sponsor') {
@@ -163,6 +188,8 @@
       </article>`;
   }
 
+  await renderLatestInstagramPost();
+
   function formatDate(value) {
     if (!value) return 'Unbekanntes Datum';
     return new Date(value).toLocaleDateString('de-DE', {
@@ -187,11 +214,106 @@
     const { data: pub } = supabase.storage.from('photos').getPublicUrl(path);
     return pub.publicUrl;
   }
+
+  async function renderLatestInstagramPost() {
+    if (!instagramLatest) return;
+
+    const { data, error } = await supabase.rpc('get_homepage_instagram_post');
+    const post = Array.isArray(data) ? data[0] : data;
+
+    if (error) {
+      console.error('[Ragebaiters] Instagram-Post konnte nicht geladen werden:', error);
+      instagramLatest.innerHTML = buildInstagramFallbackCard({
+        title: 'Instagram-Verbindung wird vorbereitet',
+        copy: 'Das Layout fuer den neuesten Instagram-Beitrag steht bereits. Die Live-Anbindung kann jetzt spaeter direkt an Meta oder eine Supabase-Synchronisierung angeschlossen werden.'
+      });
+      return;
+    }
+
+    if (!post?.post_url && !post?.image_url && !post?.title && !post?.caption) {
+      instagramLatest.innerHTML = buildInstagramFallbackCard({
+        title: 'Noch kein Instagram-Beitrag hinterlegt',
+        copy: 'Sobald die Datenquelle verbunden ist, erscheint hier automatisch nur der aktuellste Instagram-Beitrag im Look der Website.'
+      });
+      return;
+    }
+
+    const imageMarkup = post.image_url
+      ? `<img class="instagram-post-image" src="${escapeHtmlAttr(post.image_url)}" alt="${escapeHtmlAttr(post.title || 'Neuester Instagram-Beitrag')}">`
+      : `
+        <div class="instagram-post-placeholder-inner">
+          <strong>${escapeHtml(post.username || 'die_ragebaiters')}</strong>
+          <span>Cover-Bild fehlt noch</span>
+        </div>`;
+
+    const primaryAction = post.post_url
+      ? `<a href="${escapeHtmlAttr(post.post_url)}" target="_blank" rel="noopener">Beitrag ansehen</a>`
+      : `<a href="${instagramProfileUrl}" target="_blank" rel="noopener">Profil oeffnen</a>`;
+
+    instagramLatest.innerHTML = `
+      <article class="card instagram-post-card">
+        <div class="instagram-post-grid">
+          <div class="instagram-post-image-wrap ${post.image_url ? '' : 'instagram-post-placeholder'}">
+            ${imageMarkup}
+            <span class="instagram-post-badge">Instagram</span>
+          </div>
+          <div class="instagram-post-copy">
+            <span class="instagram-post-kicker">Live vorbereitet</span>
+            <h3>${escapeHtml(post.title || 'Neuester Beitrag von die_ragebaiters')}</h3>
+            <p>${escapeHtml(post.caption || 'Der aktuellste Instagram-Beitrag kann hier im Stil der Website dargestellt werden.')}</p>
+            <div class="instagram-post-meta">
+              <span>@${escapeHtml(post.username || 'die_ragebaiters')}</span>
+              <span>${formatInstagramDate(post.posted_at)}</span>
+            </div>
+            <div class="instagram-post-actions">
+              ${primaryAction}
+              <a class="instagram-post-secondary" href="${instagramProfileUrl}" target="_blank" rel="noopener">Profil oeffnen</a>
+            </div>
+          </div>
+        </div>
+      </article>`;
+  }
+
+  function buildInstagramFallbackCard({ title, copy }) {
+    return `
+      <article class="card instagram-post-card instagram-post-card-empty">
+        <div class="instagram-post-grid">
+          <div class="instagram-post-image-wrap instagram-post-placeholder" aria-hidden="true">
+            <span class="instagram-post-badge">Instagram</span>
+            <div class="instagram-post-placeholder-inner">
+              <strong>die_ragebaiters</strong>
+              <span>Neuester Post erscheint hier</span>
+            </div>
+          </div>
+          <div class="instagram-post-copy">
+            <span class="instagram-post-kicker">Design bereit</span>
+            <h3>${escapeHtml(title)}</h3>
+            <p>${escapeHtml(copy)}</p>
+            <div class="instagram-post-meta">
+              <span>@die_ragebaiters</span>
+              <span>Wartet auf Live-Daten</span>
+            </div>
+            <div class="instagram-post-actions">
+              <a href="${instagramProfileUrl}" target="_blank" rel="noopener">Instagram oeffnen</a>
+            </div>
+          </div>
+        </div>
+      </article>`;
+  }
+
+  function formatInstagramDate(value) {
+    if (!value) return 'Neuester Beitrag';
+    return new Date(value).toLocaleDateString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  }
+
+  function escapeHtmlAttr(s) {
+    return escapeHtml(s).replace(/`/g, '&#96;');
+  }
 </script>
 </body>
 </html>
-
-
-
-
 

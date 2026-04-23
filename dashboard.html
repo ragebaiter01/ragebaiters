@@ -16,7 +16,14 @@
 
   <header class="container">
     <nav class="nav">
-      <div style="font-weight: 900; font-size: 1.6rem;">die Ragebaiters</div>
+      <div class="nav-brand">
+        <div class="nav-title">die Ragebaiters</div>
+      </div>
+      <button class="nav-toggle" type="button" aria-label="Menü" aria-expanded="false">
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+      </button>
       <div class="nav-links">
         <a href="index.html">Startseite</a>
         <a href="team.html">Team</a>
@@ -36,6 +43,7 @@
         </a>
       </div>
     </nav>
+    <div class="nav-backdrop" aria-hidden="true"></div>
   </header>
 
   <main class="container">
@@ -49,7 +57,7 @@
         <div>
           <h2 style="margin: 10px 0 4px;">Willkommen, <span id="hello">...</span></h2>
           <p style="color: var(--muted); margin: 0;">Verwalte hier Uploads, Einladungen, Startseiten-Banner und Benutzer.</p>
-          <p style="color: var(--accent); margin: 8px 0 0; font-size: 0.9rem; font-weight: 700;">Dashboard-Version: 2026-04-21 Nathan 1</p>
+          <p style="color: var(--accent); margin: 8px 0 0; font-size: 0.9rem; font-weight: 700;">Dashboard-Version: 2026-04-22 Review 2</p>
         </div>
         <div class="dashboard-role" id="roleBadge">Mitglied</div>
       </div>
@@ -63,6 +71,7 @@
             <button type="button" class="dashboard-tab role-member-up" data-view="users">Mitglieder</button>
             <button type="button" class="dashboard-tab role-admin-only" data-view="invites">Einladungscodes</button>
             <button type="button" class="dashboard-tab role-admin-only" data-view="banner">Startseiten-Banner</button>
+            <button type="button" class="dashboard-tab" data-view="team">Team</button>
           </div>
           <div class="dashboard-sidebar-note" id="memberNote" hidden>
             Dein Zugriff richtet sich nach deiner Rolle. Admin-Funktionen bleiben nur fuer Team-Admins sichtbar.
@@ -79,6 +88,15 @@
                 </div>
               </div>
               <div class="welcome-grid" id="welcomeCapabilities"></div>
+              <article class="card capability-card test-account-card role-admin-view" id="testAccountCard" hidden>
+                <span>Testaccount</span>
+                <strong>Parallel geoeffnet</strong>
+                <p>Oeffnet einen getrennten Observer-Testaccount in einem neuen Tab. Dein eigener Admin-Login bleibt dabei aktiv.</p>
+                <div class="form-actions">
+                  <button type="button" class="btn-secondary" id="openTestAccountBtn">Testaccount oeffnen</button>
+                </div>
+                <div class="admin-message" id="testAccountMessage" hidden></div>
+              </article>
             </div>
           </section>
 
@@ -86,7 +104,7 @@
             <div class="panel-head">
               <div>
                 <h3>Uploads & Mediathek</h3>
-                <p>Lade hier Fotos hoch. Sie erscheinen automatisch in der Mediathek.</p>
+                <p>Lade hier Fotos hoch. Observer-Uploads muessen erst von einem Admin freigegeben werden.</p>
               </div>
             </div>
 
@@ -125,11 +143,19 @@
 
             <div class="panel-head panel-head-spaced">
               <div>
-                <h3 id="photoSectionTitle">Meine Fotos (<span id="count">0</span>)</h3>
-                <p id="photoSectionIntro">Hier siehst du deine bereits hochgeladenen Bilder.</p>
+                <h3>Meine Fotos (<span id="count">0</span>)</h3>
+                <p>Hier siehst du deine bereits hochgeladenen Bilder inklusive Status.</p>
               </div>
             </div>
             <div id="myPhotos"></div>
+
+            <div class="panel-head panel-head-spaced role-admin-view" hidden>
+              <div>
+                <h3>Upload-Pruefung</h3>
+                <p>Observer-Uploads pruefen, freigeben oder intern als Troll-Post umwandeln.</p>
+              </div>
+            </div>
+            <div id="pendingReviews" class="role-admin-view" hidden></div>
           </section>
 
           <section class="dashboard-view role-admin-view" id="view-invites" hidden>
@@ -180,7 +206,6 @@
                     <select id="inviteRoleInput">
                       <option value="observer">Beobachter</option>
                       <option value="member" selected>Mitglied</option>
-                      <option value="nathan">Nathan</option>
                       <option value="admin">Admin</option>
                     </select>
                   </label>
@@ -221,8 +246,8 @@
           <section class="dashboard-view role-admin-view" id="view-banner" hidden>
             <div class="panel-head">
               <div>
-                <h3>Startseiten-Banner</h3>
-                <p>Waehle aus, welches Banner oben auf der Startseite angezeigt wird.</p>
+                <h3>Startseite verwalten</h3>
+                <p>Pflege hier Banner und den Instagram-Beitrag, der unten auf der Startseite erscheinen soll.</p>
               </div>
             </div>
 
@@ -258,6 +283,98 @@
                 <img id="bannerPreview" class="banner-preview-image" src="images/banner2.png" alt="Banner Vorschau">
               </div>
               <div class="admin-message" id="bannerMessage" hidden></div>
+            </div>
+
+            <div class="card admin-card">
+              <div class="panel-head compact">
+                <div>
+                  <h3>Instagram-Beitrag fuer die Startseite</h3>
+                  <p>Hier hinterlegst du den einen Beitrag oder Reel, der unten auf der Startseite im Seitendesign angezeigt wird.</p>
+                </div>
+                <button type="button" class="btn-primary" id="saveInstagramBtn">Instagram speichern</button>
+              </div>
+
+              <div class="form-row form-row-two">
+                <label class="field">
+                  <span>Post- oder Reel-Link</span>
+                  <input type="url" id="instagramPostUrlInput" placeholder="https://www.instagram.com/p/.../">
+                </label>
+                <label class="field">
+                  <span>Cover- / Bild-URL (optional)</span>
+                  <input type="url" id="instagramImageUrlInput" placeholder="Optional: https://...jpg oder https://...png">
+                </label>
+              </div>
+
+              <div class="form-row form-row-two">
+                <label class="field">
+                  <span>Titel (optional)</span>
+                  <input type="text" id="instagramTitleInput" maxlength="120" placeholder="Optional: z.B. Neuer Reel von den Ragebaiters">
+                </label>
+                <label class="field">
+                  <span>Accountname</span>
+                  <input type="text" id="instagramUsernameInput" maxlength="64" placeholder="die_ragebaiters">
+                </label>
+              </div>
+
+              <div class="form-row form-row-two">
+                <label class="field">
+                  <span>Veroeffentlicht am (optional)</span>
+                  <input type="datetime-local" id="instagramPostedAtInput">
+                </label>
+                <div class="dashboard-sidebar-note instagram-admin-hint">
+                  Es reicht jetzt, nur den Instagram-Link einzutragen. Cover-Bild, Titel, Text und Datum sind optional.
+                </div>
+              </div>
+
+              <div class="form-row">
+                <label class="field">
+                  <span>Text / Caption (optional)</span>
+                  <textarea
+                    id="instagramCaptionInput"
+                    class="upload-caption-input"
+                    maxlength="500"
+                    placeholder="Optional: kurzer Text, Caption oder Beschreibung fuer die Startseite."
+                  ></textarea>
+                </label>
+              </div>
+
+              <div class="instagram-dashboard-preview">
+                <div class="panel-head compact">
+                  <div>
+                    <h3>Vorschau</h3>
+                    <p>So wird der Instagram-Beitrag auf der Startseite dargestellt.</p>
+                  </div>
+                </div>
+                <div id="instagramPreview"></div>
+              </div>
+
+              <div class="admin-message" id="instagramMessage" hidden></div>
+            </div>
+          </section>
+
+          <section class="dashboard-view" id="view-team" hidden>
+            <div class="panel-head">
+              <div>
+                <h3>Team verwalten</h3>
+                <p>Bilder, Kacheln und Verknuepfungen zu Benutzerkonten direkt hier pflegen.</p>
+              </div>
+              <div class="form-actions">
+                <button type="button" class="btn-secondary" id="addTeamMemberBtn">Neue Kachel</button>
+                <button type="button" class="btn-primary" id="saveTeamMembersBtn">Team speichern</button>
+              </div>
+            </div>
+
+            <div class="card admin-card">
+              <div class="panel-head compact">
+                <div>
+                  <h3>Team-Mitglieder</h3>
+                  <p>Admins koennen Kacheln anlegen, loeschen und mit Benutzerkonten verknuepfen. Verknuepfte Personen koennen ihre eigene Kachel spaeter selbst pflegen.</p>
+                </div>
+              </div>
+              <div id="teamMembersEditor" class="team-editor-grid">
+                <div class="table-empty">Team-Daten werden geladen...</div>
+              </div>
+              <div class="admin-message" id="teamMembersMessage" hidden></div>
             </div>
           </section>
 
@@ -303,7 +420,8 @@
     <div style="font-size: 0.8rem; opacity: 0.6;">Est. 2026 • Made by sneiper0</div>
   </footer>
 
+  <script src="nav.js?v=2026-04-23-1" defer></script>
   <script src="config.js"></script>
-  <script type="module" src="dashboard.js?v=2026-04-21-2"></script>
+  <script type="module" src="dashboard.js?v=2026-04-23-3"></script>
 </body>
 </html>

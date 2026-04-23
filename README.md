@@ -18,19 +18,14 @@ Kein PHP, keine eigene Datenbank. Supabase übernimmt:
 
 ### 2. Schema importieren
 1. Im Supabase-Dashboard links auf **SQL Editor** klicken.
-2. Inhalt von `supabase_admin_dashboard.sql` komplett einfügen.
+2. Inhalt von `supabase-setup.sql` (aus diesem ZIP) komplett einfügen.
 3. **Run** drücken.
 
 Dabei werden automatisch angelegt:
 - Tabellen `profiles`, `invites`, `photos`
 - View `photos_public`
-- Storage-Bucket `photos` (privat, Zugriff nur für eingeloggte Benutzer über signierte URLs)
+- Storage-Bucket `photos` (öffentlich lesbar)
 - Der erste Einladungscode: **`TEAM-RAGEBAIT-2026`**
-
-### 2b. Hinweis zum Security-Setup
-Die mitgelieferte `supabase_admin_dashboard.sql` setzt den Foto-Bucket bereits auf privat,
-legt Storage-/RLS-Regeln für Upload, Lesen und Löschen an und schaltet Medien-RPCs auf
-eingeloggte Benutzer um. Nach SQL-Änderungen die Datei im Supabase SQL Editor erneut ausführen.
 
 ### 3. API-Keys kopieren
 1. Links auf **Project Settings** → **API**.
@@ -68,7 +63,7 @@ ragebaiters.de/
 ├── index.html          Startseite
 ├── team.html           Einheit
 ├── impressum.html      Impressum
-├── mediathek.html      interne Galerie (Lightbox, Login erforderlich)
+├── mediathek.html      öffentliche Galerie (Lightbox)
 ├── login.html          Anmeldung
 ├── register.html       Registrierung mit Invite-Code
 ├── dashboard.html      interner Bereich: Upload + eigene Bilder
@@ -78,7 +73,7 @@ ragebaiters.de/
 ├── script.js           Team-Modal
 ├── config.js           ← deine Supabase-Zugangsdaten (du füllst sie aus)
 ├── auth.js             Supabase-Client + dynamische Nav
-├── supabase_admin_dashboard.sql  Schema für Supabase (einmalig importieren)
+├── supabase-setup.sql  Schema für Supabase (einmalig importieren)
 └── images/             deine bestehenden Logos und Banner
 ```
 
@@ -104,10 +99,9 @@ Zum Upgraden: Supabase → Table Editor → `profiles` → deine Zeile → `role
 
 ## Was die Regeln garantieren (RLS-Policies)
 
-- Die **Mediathek** und Bilddateien sind nur für eingeloggte Benutzer erreichbar.
+- Jeder (auch ausgeloggt) darf die **Mediathek** sehen.
 - Nur **eingeloggte** User dürfen Bilder **hochladen**.
-- Normale Benutzer können nur ihre **eigenen** Bilder löschen.
-- Admins können alle Mediathek-Bilder im Dashboard sehen und löschen.
+- Jeder User kann **nur seine eigenen** Bilder löschen.
 - Direkte Schreibzugriffe auf `invites` sind komplett gesperrt – Codes werden
   ausschließlich über die SQL-Funktion `redeem_invite()` eingelöst.
 

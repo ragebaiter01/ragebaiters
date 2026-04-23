@@ -16,7 +16,14 @@
 
   <header class="container">
     <nav class="nav">
-      <div style="font-weight: 900; font-size: 1.6rem;">die Ragebaiters</div>
+      <div class="nav-brand">
+        <div class="nav-title">die Ragebaiters</div>
+      </div>
+      <button class="nav-toggle" type="button" aria-label="Menü" aria-expanded="false">
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+      </button>
       <div class="nav-links">
         <a href="index.html">Startseite</a>
         <a href="team.html">Team</a>
@@ -36,6 +43,7 @@
         </a>
       </div>
     </nav>
+    <div class="nav-backdrop" aria-hidden="true"></div>
   </header>
 
   <main class="container">
@@ -63,53 +71,77 @@
     <div style="font-size: 0.8rem; opacity: 0.6;">Est. 2026 • Made by sneiper0</div>
   </footer>
 
+  <script src="nav.js?v=2026-04-23-1" defer></script>
   <script src="config.js"></script>
   <script type="module">
-    import { supabase, initPage, getSessionUser, getProfile, getPhotoUrls } from './auth.js';
+    import { supabase, initPage, getSessionUser, getProfile } from './auth.js?v=2026-04-23-1';
     await initPage('mediathek');
 
     const gallery = document.getElementById('gallery');
     const currentUser = await getSessionUser();
     const currentProfile = currentUser ? await getProfile(currentUser.id) : null;
-    const currentRole = normalizeRole(currentProfile?.role);
-    const canSeeNathanPosts = currentRole === 'admin' || currentRole === 'nathan';
+    const currentRole = currentUser ? normalizeRole(currentProfile?.role) : 'guest';
+    const canSeeInternalPosts = currentRole === 'admin' || currentRole === 'observer';
+    const isAdmin = currentRole === 'admin';
 
-    if (!currentUser) {
-      gallery.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Bitte melde dich an, um die interne Mediathek zu sehen.</div>';
+    const { data, error } = await supabase.rpc('list_gallery_photos', {
+      p_include_internal: canSeeInternalPosts
+    });
+    const photos = Array.isArray(data) ? data : [];
+
+    if (error) {
+      gallery.innerHTML = '<div class="alert alert-error">' + escapeHtml(error.message) + '</div>';
+    } else if (!photos.length) {
+      gallery.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Es wurden noch keine Fotos hochgeladen.</div>';
     } else {
-      const { data, error } = await supabase.rpc('list_gallery_photos', {
-        p_include_nathan: canSeeNathanPosts
-      });
-      const photos = Array.isArray(data) ? data : [];
-
-      if (error) {
-        gallery.innerHTML = '<div class="alert alert-error">' + escapeHtml(error.message) + '</div>';
-      } else if (!photos.length) {
-        gallery.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Es wurden noch keine Fotos hochgeladen.</div>';
-      } else {
-        const urlMap = await getPhotoUrls(photos.map(photo => photo.storage_path));
-        const grid = document.createElement('div');
-        grid.className = 'photo-grid lightbox-grid';
-        for (const p of photos) {
-          const imageUrl = urlMap.get(p.storage_path) || '';
-          if (!imageUrl) continue;
-          const fig = document.createElement('figure');
-          fig.className = 'photo-item';
-          fig.dataset.full = imageUrl;
-          fig.dataset.title = p.title || '';
-          fig.dataset.caption = p.caption || '';
-          fig.dataset.author = p.author || '';
-          fig.innerHTML = `
-            <img src="${imageUrl}" alt="${escapeHtml(p.title || 'Mediathek Bild')}" loading="lazy">`;
-          grid.appendChild(fig);
-        }
-        if (!grid.children.length) {
-          gallery.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Die Bilder konnten gerade nicht geladen werden.</div>';
-        } else {
-          gallery.appendChild(grid);
-          initLightbox(grid);
-        }
+      const grid = document.createElement('div');
+      grid.className = 'photo-grid lightbox-grid';
+      for (const p of photos) {
+        const imageUrl = resolvePhotoUrl(p.storage_path);
+        const fig = document.createElement('figure');
+        fig.className = 'photo-item';
+        fig.dataset.full = imageUrl;
+        fig.dataset.id = p.id;
+        fig.dataset.path = p.storage_path;
+        fig.dataset.title = p.title || '';
+        fig.dataset.caption = p.caption || '';
+        fig.dataset.author = p.author || '';
+        fig.innerHTML = `
+          <img src="${imageUrl}" alt="${escapeHtml(p.title || 'Mediathek Bild')}" loading="lazy">
+          ${isAdmin ? '<button class="btn-delete" type="button" title="Loeschen">x</button>' : ''}`;
+        grid.appendChild(fig);
       }
+      gallery.appendChild(grid);
+      if (isAdmin) {
+        grid.querySelectorAll('.btn-delete').forEach(btn => {
+          btn.addEventListener('click', async (event) => {
+            event.stopPropagation();
+            const fig = btn.closest('.photo-item');
+            const photoId = Number(fig?.dataset.id);
+            const photoPath = fig?.dataset.path || '';
+            if (!photoId) return;
+            if (!confirm('Dieses Bild wirklich aus der Mediathek loeschen?')) return;
+
+            if (photoPath && !String(photoPath).startsWith('__local__/')) {
+              const { error: storageError } = await supabase.storage.from('photos').remove([photoPath]);
+              if (storageError && !/not found|no such object|not exists/i.test(storageError.message || '')) {
+                return alert(storageError.message);
+              }
+            }
+
+            const { data: deleted, error: deleteError } = await supabase.rpc('admin_delete_photo', {
+              p_photo_id: photoId
+            });
+            if (deleteError) return alert(deleteError.message);
+            if (!deleted) return alert('Bild konnte nicht geloescht werden.');
+            fig.remove();
+            if (!grid.querySelector('.photo-item')) {
+              gallery.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Es wurden noch keine Fotos hochgeladen.</div>';
+            }
+          });
+        });
+      }
+      initLightbox(grid);
     }
 
     function initLightbox(grid) {
@@ -156,9 +188,16 @@
     }
 
     function normalizeRole(role) {
-      return ['observer', 'member', 'nathan', 'admin'].includes(role) ? role : 'observer';
+      return ['observer', 'member', 'admin'].includes(role) ? role : 'guest';
     }
 
+    function resolvePhotoUrl(path) {
+      if (String(path || '').startsWith('__local__/')) {
+        return path.replace('__local__/', '');
+      }
+      const { data: pub } = supabase.storage.from('photos').getPublicUrl(path);
+      return pub.publicUrl;
+    }
   </script>
 </body>
 </html>

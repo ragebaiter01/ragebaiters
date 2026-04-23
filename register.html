@@ -16,7 +16,14 @@
 
   <header class="container">
     <nav class="nav">
-      <div style="font-weight: 900; font-size: 1.6rem;">die Ragebaiters</div>
+      <div class="nav-brand">
+        <div class="nav-title">die Ragebaiters</div>
+      </div>
+      <button class="nav-toggle" type="button" aria-label="Menü" aria-expanded="false">
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+      </button>
       <div class="nav-links">
         <a href="index.html">Startseite</a>
         <a href="team.html">Team</a>
@@ -36,6 +43,7 @@
         </a>
       </div>
     </nav>
+    <div class="nav-backdrop" aria-hidden="true"></div>
   </header>
 
   <main class="container">
@@ -76,7 +84,7 @@
           </form>
 
           <p class="auth-hint">
-            Schon einen Account? <a class="inline-link" href="login.html">Zum Login</a>
+            Schon einen Account? <a class="inline-link" href="login.html">Zum Login mit Benutzername</a>
           </p>
         </div>
       </div>
@@ -88,12 +96,13 @@
     <div style="font-size: 0.8rem; opacity: 0.6;">Est. 2026 • Made by sneiper0</div>
   </footer>
 
+  <script src="nav.js?v=2026-04-23-1" defer></script>
   <script src="config.js"></script>
   <script type="module">
-    import { supabase, initPage, getSessionUser } from './auth.js';
+    import { supabase, initPage, getSessionUser, buildScopedUrl, waitForSessionUser, rememberPendingSession } from './auth.js?v=2026-04-23-1';
     await initPage('login');
 
-    if (await getSessionUser()) location.href = 'dashboard.html';
+    if (await getSessionUser()) location.href = buildScopedUrl('dashboard.html');
 
     const form    = document.getElementById('regForm');
     const alertE  = document.getElementById('alert');
@@ -116,10 +125,10 @@
 
       if (pw !== pw2) return fail('Passwörter stimmen nicht überein.');
 
-      // 1) Username bereits vergeben? (RPC statt direktem Table-Read)
-      const { data: usernameOk, error: usernameErr } = await supabase.rpc('is_username_available', { p_username: user });
-      if (usernameErr) return fail('Benutzername konnte nicht geprÃƒÂ¼ft werden: ' + usernameErr.message);
-      if (!usernameOk) return fail('Benutzername bereits vergeben oder ungÃƒÂ¼ltig.');
+      // 1) Username bereits vergeben?
+      const { data: existing } = await supabase
+        .from('profiles').select('id').ilike('username', user).maybeSingle();
+      if (existing) return fail('Benutzername bereits vergeben.');
 
       // 2) Einladungscode vorab prÃ¼fen, damit kein Auth-Account ohne Invite entsteht
       const { data: inviteOk, error: inviteErr } = await supabase.rpc('check_invite_code', { p_code: invite });
@@ -151,6 +160,7 @@
       }
 
       // 3) Einladungscode einlösen
+      rememberPendingSession(session);
       const { data: inviteRole, error: redErr } = await supabase.rpc('redeem_invite', { p_code: invite });
       if (redErr || !inviteRole) {
         // Account existiert jetzt, aber Invite ist falsch -> Account wieder raus
@@ -164,7 +174,10 @@
       }, { onConflict: 'id' });
       if (profErr) return fail('Profil konnte nicht angelegt werden: ' + profErr.message);
 
-      location.href = 'dashboard.html';
+      const readyUser = await waitForSessionUser();
+      if (!readyUser) return fail('Session wurde nicht rechtzeitig geladen. Bitte erneut anmelden.');
+
+      location.href = buildScopedUrl('dashboard.html');
     });
 
     function fail(msg) {
