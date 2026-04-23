@@ -1450,6 +1450,400 @@ end;
 $$;
 
 grant execute on function public.admin_mark_photo_as_troll(bigint) to authenticated;
+
+-- ============================================================
+-- 2026-04-23: Username-Login + 5-Minuten-Testaccount-Rotation
+-- ============================================================
+
+create table if not exists public.test_account_sessions (
+  id uuid primary key default gen_random_uuid(),
+  session_scope text not null unique,
+  email text not null unique,
+  username text not null,
+  role text not null default 'observer',
+  auth_user_id uuid references auth.users (id) on delete set null,
+  created_by uuid references auth.users (id) on delete set null,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null
+);
+
+alter table public.test_account_sessions
+  drop constraint if exists test_account_sessions_role_check;
+
+alter table public.test_account_sessions
+  add constraint test_account_sessions_role_check
+  check (role in ('observer', 'member', 'admin'));
+
+create index if not exists test_account_sessions_expires_at_idx
+  on public.test_account_sessions (expires_at);
+
+create or replace function public.hard_delete_user_account(p_user_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_deleted_count integer := 0;
+begin
+  if p_user_id is null then
+    return false;
+  end if;
+
+  delete from storage.objects
+  where bucket_id = 'photos'
+    and name like p_user_id::text || '/%';
+
+  delete from public.photos
+  where user_id = p_user_id;
+
+  delete from public.profiles
+  where id = p_user_id;
+
+  delete from public.test_account_sessions
+  where auth_user_id = p_user_id;
+
+  if to_regclass('auth.sessions') is not null then
+    execute 'delete from auth.sessions where user_id = $1' using p_user_id;
+  end if;
+
+  if to_regclass('auth.refresh_tokens') is not null then
+    execute 'delete from auth.refresh_tokens where user_id = $1' using p_user_id;
+  end if;
+
+  if to_regclass('auth.identities') is not null then
+    execute 'delete from auth.identities where user_id = $1' using p_user_id;
+  end if;
+
+  delete from auth.users
+  where id = p_user_id;
+
+  get diagnostics v_deleted_count = row_count;
+  return v_deleted_count > 0;
+end;
+$$;
+
+create or replace function public.admin_cleanup_expired_test_accounts(
+  p_force_session_scope text default null
+)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_force_scope text := nullif(trim(coalesce(p_force_session_scope, '')), '');
+  v_deleted_count integer := 0;
+  v_session record;
+begin
+  if not public.is_admin() then
+    raise exception 'Nur Admins duerfen Testaccounts bereinigen.';
+  end if;
+
+  for v_session in
+    select session_scope, auth_user_id
+    from public.test_account_sessions
+    where expires_at <= now()
+       or (v_force_scope is not null and session_scope = v_force_scope)
+  loop
+    if v_session.auth_user_id is not null then
+      perform public.hard_delete_user_account(v_session.auth_user_id);
+    end if;
+
+    delete from public.test_account_sessions
+    where session_scope = v_session.session_scope;
+
+    v_deleted_count := v_deleted_count + 1;
+  end loop;
+
+  return v_deleted_count;
+end;
+$$;
+
+create or replace function public.admin_get_test_account_access()
+returns table (
+  session_scope text,
+  email text,
+  password text,
+  username text,
+  role text,
+  expires_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_seed text;
+  v_session_scope text;
+  v_email text;
+  v_password text;
+  v_username text;
+  v_expires_at timestamptz;
+begin
+  if not public.is_admin() then
+    raise exception 'Nur Admins duerfen den Testaccount oeffnen.';
+  end if;
+
+  perform public.admin_cleanup_expired_test_accounts();
+
+  v_seed := substr(replace(gen_random_uuid()::text, '-', ''), 1, 10);
+  v_session_scope := 'test-account-' || v_seed;
+  v_email := 'testaccount+' || v_seed || '@ragebaiters.local';
+  v_username := 'testaccount-' || substr(v_seed, 1, 6);
+  v_password := substr(
+    replace(gen_random_uuid()::text, '-', '') ||
+    replace(gen_random_uuid()::text, '-', ''),
+    1,
+    28
+  ) || 'A9!';
+  v_expires_at := now() + interval '5 minutes';
+
+  insert into public.test_account_sessions (
+    session_scope,
+    email,
+    username,
+    role,
+    created_by,
+    expires_at
+  )
+  values (
+    v_session_scope,
+    v_email,
+    v_username,
+    'observer',
+    auth.uid(),
+    v_expires_at
+  );
+
+  return query
+  select
+    v_session_scope,
+    v_email,
+    v_password,
+    v_username,
+    'observer'::text,
+    v_expires_at;
+end;
+$$;
+
+create or replace function public.admin_rotate_test_account_access(
+  p_previous_session_scope text default null
+)
+returns table (
+  session_scope text,
+  email text,
+  password text,
+  username text,
+  role text,
+  expires_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Nur Admins duerfen Testaccounts rotieren.';
+  end if;
+
+  perform public.admin_cleanup_expired_test_accounts(p_previous_session_scope);
+
+  return query
+  select *
+  from public.admin_get_test_account_access();
+end;
+$$;
+
+create or replace function public.admin_prepare_test_account(
+  p_email text,
+  p_username text default 'testaccount-preview',
+  p_role text default 'observer'
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_email text;
+  v_username text;
+  v_role text;
+  v_user_id uuid;
+begin
+  if not public.is_admin() then
+    raise exception 'Nur Admins duerfen den Testaccount vorbereiten.';
+  end if;
+
+  v_email := lower(trim(coalesce(p_email, '')));
+  v_username := trim(coalesce(p_username, 'testaccount-preview'));
+  v_role := 'observer';
+
+  if v_email = '' then
+    raise exception 'Die Testaccount-E-Mail fehlt.';
+  end if;
+
+  select id
+  into v_user_id
+  from auth.users
+  where lower(email::text) = v_email
+  order by created_at desc
+  limit 1;
+
+  if v_user_id is null then
+    return false;
+  end if;
+
+  if exists (
+    select 1
+    from public.profiles
+    where username = v_username
+      and id <> v_user_id
+  ) then
+    v_username := left(v_username || '-' || substr(replace(v_user_id::text, '-', ''), 1, 6), 32);
+  end if;
+
+  update auth.users
+  set email_confirmed_at = coalesce(email_confirmed_at, now()),
+      raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object(
+        'username', v_username,
+        'is_test_account', true
+      ),
+      updated_at = now()
+  where id = v_user_id;
+
+  insert into public.profiles (id, username, role)
+  values (v_user_id, v_username, v_role)
+  on conflict (id) do update
+    set username = excluded.username,
+        role = excluded.role;
+
+  update public.test_account_sessions
+  set auth_user_id = v_user_id,
+      username = v_username,
+      role = v_role
+  where lower(email) = v_email;
+
+  return true;
+end;
+$$;
+
+create or replace function public.resolve_login_email(p_identifier text)
+returns text
+language plpgsql
+security definer
+set search_path = public
+stable
+as $$
+declare
+  v_identifier text := trim(coalesce(p_identifier, ''));
+  v_email text;
+begin
+  if v_identifier = '' then
+    return null;
+  end if;
+
+  if position('@' in v_identifier) > 0 then
+    return lower(v_identifier);
+  end if;
+
+  select lower(u.email::text)
+  into v_email
+  from public.profiles p
+  join auth.users u on u.id = p.id
+  where lower(p.username) = lower(v_identifier)
+  order by u.created_at desc
+  limit 1;
+
+  return v_email;
+end;
+$$;
+
+create or replace function public.admin_update_user(
+  p_user_id uuid,
+  p_username text,
+  p_role text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_username text;
+  v_role text;
+begin
+  if not public.is_admin() then
+    raise exception 'Nur Admins duerfen Benutzer bearbeiten.';
+  end if;
+
+  v_username := trim(coalesce(p_username, ''));
+  v_role := trim(coalesce(p_role, 'member'));
+
+  if v_username = '' then
+    raise exception 'Der Benutzername darf nicht leer sein.';
+  end if;
+
+  if length(v_username) < 3 or length(v_username) > 32 then
+    raise exception 'Der Benutzername muss zwischen 3 und 32 Zeichen lang sein.';
+  end if;
+
+  if v_username !~ '^[A-Za-z0-9_.-]+$' then
+    raise exception 'Der Benutzername enthaelt ungueltige Zeichen.';
+  end if;
+
+  if v_role not in ('observer', 'member', 'admin') then
+    raise exception 'Ungueltige Rolle.';
+  end if;
+
+  if exists (
+    select 1
+    from public.profiles
+    where lower(username) = lower(v_username)
+      and id <> p_user_id
+  ) then
+    raise exception 'Dieser Benutzername ist bereits vergeben.';
+  end if;
+
+  insert into public.profiles (id, username, role)
+  values (p_user_id, v_username, v_role)
+  on conflict (id) do update
+    set username = excluded.username,
+        role = excluded.role;
+
+  return true;
+end;
+$$;
+
+create or replace function public.admin_delete_user(p_user_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Nur Admins duerfen Benutzer loeschen.';
+  end if;
+
+  if p_user_id = auth.uid() then
+    raise exception 'Du kannst deinen eigenen Admin-Account hier nicht loeschen.';
+  end if;
+
+  if not public.hard_delete_user_account(p_user_id) then
+    raise exception 'Benutzer wurde im Auth-System nicht gefunden oder konnte nicht geloescht werden.';
+  end if;
+
+  return true;
+end;
+$$;
+
+grant execute on function public.resolve_login_email(text) to anon, authenticated;
+grant execute on function public.admin_cleanup_expired_test_accounts(text) to authenticated;
+grant execute on function public.admin_get_test_account_access() to authenticated;
+grant execute on function public.admin_rotate_test_account_access(text) to authenticated;
+grant execute on function public.admin_prepare_test_account(text, text, text) to authenticated;
+grant execute on function public.admin_delete_user(uuid) to authenticated;
 create or replace function public.admin_mark_photo_as_troll(p_photo_id bigint)
 returns boolean
 language plpgsql

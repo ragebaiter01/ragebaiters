@@ -1,4 +1,16 @@
-import { supabase, initPage, getSessionUser, getProfile, buildScopedUrl, waitForSessionUser, restorePendingSessionUser } from './auth.js?v=2026-04-22-3';
+import {
+  supabase,
+  defaultSupabase,
+  initPage,
+  getSessionUser,
+  getProfile,
+  buildScopedUrl,
+  waitForSessionUser,
+  restorePendingSessionUser,
+  getCurrentSessionScope,
+  readScopedSessionMeta,
+  clearScopedSessionMeta
+} from './auth.js?v=2026-04-23-1';
 
 await initPage('dashboard');
 
@@ -6,8 +18,9 @@ const MAX_BYTES = 8 * 1024 * 1024;
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const TROLL_IMAGE_CAPTION = 'schabbatt schalom';
 const TEST_ACCOUNT_SCOPE = 'test-account';
+const TEST_ACCOUNT_SCOPE_PREFIX = 'test-account-';
 const TEST_HANDOFF_PREFIX = 'ragebaiters:test-handoff:';
-const TEST_HANDOFF_TTL_MS = 2 * 60 * 1000;
+const TEST_ACCOUNT_LIFETIME_MS = 5 * 60 * 1000;
 const BANNER_OPTIONS = {
   sponsor: { src: 'images/banner.png', label: 'Sponsor' },
   team: { src: 'images/banner2.png', label: 'Team' }
@@ -68,6 +81,9 @@ const state = {
   canUpload: false,
   canViewUsers: false
 };
+const currentSessionScope = getCurrentSessionScope();
+const isTemporaryTestSession = currentSessionScope === TEST_ACCOUNT_SCOPE
+  || currentSessionScope.startsWith(TEST_ACCOUNT_SCOPE_PREFIX);
 
 state.user = await waitForSessionUser();
 if (!state.user) {
@@ -114,6 +130,7 @@ setupNavigation();
 if (state.canUpload) setupUploads();
 if (state.canViewUsers) refreshUsersBtn.addEventListener('click', () => loadUsers());
 setupAdminActions();
+setupTestAccountLifecycle();
 
 loadingSection.hidden = true;
 mainSection.hidden = false;
@@ -240,18 +257,22 @@ async function openTestAccountSession() {
     }
 
     clearExpiredTestAccountHandoffs();
+    const sessionScope = String(access.session_scope || TEST_ACCOUNT_SCOPE).trim() || TEST_ACCOUNT_SCOPE;
+    const expiresAt = access.expires_at
+      ? new Date(access.expires_at).getTime()
+      : Date.now() + TEST_ACCOUNT_LIFETIME_MS;
 
     const handoffId = createTestAccountHandoffId();
     localStorage.setItem(`${TEST_HANDOFF_PREFIX}${handoffId}`, JSON.stringify({
-      sessionScope: TEST_ACCOUNT_SCOPE,
+      sessionScope,
       email: access.email,
       password: access.password,
       username: access.username,
       role: access.role,
-      expiresAt: Date.now() + TEST_HANDOFF_TTL_MS
+      expiresAt
     }));
 
-    const targetUrl = buildScopedUrl('dashboard.html', TEST_ACCOUNT_SCOPE, { handoff: handoffId });
+    const targetUrl = buildScopedUrl('dashboard.html', sessionScope, { handoff: handoffId });
     if (pendingTab && !pendingTab.closed) {
       pendingTab.location = targetUrl;
     } else {
@@ -260,7 +281,7 @@ async function openTestAccountSession() {
 
     setMessage(
       testAccountMessage,
-      'Testaccount im neuen Tab geoeffnet. Dein Admin-Login bleibt im aktuellen Tab aktiv.',
+      'Testaccount im neuen Tab geoeffnet. Er wird nach 5 Minuten automatisch ersetzt, dein Admin-Login bleibt hier aktiv.',
       'success'
     );
   } catch (error) {
@@ -271,6 +292,62 @@ async function openTestAccountSession() {
       `Testaccount konnte nicht geoeffnet werden: ${message}`,
       'error'
     );
+  }
+}
+
+function setupTestAccountLifecycle() {
+  if (!isTemporaryTestSession) return;
+
+  const meta = readScopedSessionMeta(currentSessionScope);
+  const expiresAt = Number(meta?.expiresAt || 0);
+  if (!expiresAt) return;
+
+  const rotateInMs = Math.max(0, expiresAt - Date.now());
+  window.setTimeout(() => {
+    rotateTestAccountSession();
+  }, rotateInMs);
+}
+
+async function rotateTestAccountSession() {
+  if (!isTemporaryTestSession) return;
+
+  try {
+    clearScopedSessionMeta(currentSessionScope);
+
+    const { data, error } = await defaultSupabase.rpc('admin_rotate_test_account_access', {
+      p_previous_session_scope: currentSessionScope
+    });
+    if (error) throw error;
+
+    const access = Array.isArray(data) ? data[0] : data;
+    if (!access?.email || !access?.password) {
+      throw new Error('Neuer Testaccount konnte nicht erstellt werden.');
+    }
+
+    clearExpiredTestAccountHandoffs();
+
+    const handoffId = createTestAccountHandoffId();
+    const nextScope = String(access.session_scope || TEST_ACCOUNT_SCOPE).trim() || TEST_ACCOUNT_SCOPE;
+    const expiresAt = access.expires_at
+      ? new Date(access.expires_at).getTime()
+      : Date.now() + TEST_ACCOUNT_LIFETIME_MS;
+
+    localStorage.setItem(`${TEST_HANDOFF_PREFIX}${handoffId}`, JSON.stringify({
+      sessionScope: nextScope,
+      email: access.email,
+      password: access.password,
+      username: access.username,
+      role: access.role,
+      expiresAt
+    }));
+
+    await supabase.auth.signOut();
+    location.replace(buildScopedUrl('dashboard.html', nextScope, { handoff: handoffId }));
+  } catch (error) {
+    console.error('[Ragebaiters] Testaccount-Rotation fehlgeschlagen:', error);
+    await supabase.auth.signOut().catch(() => {});
+    alert(`Testaccount konnte nicht automatisch erneuert werden: ${mapTestAccountError(error)}`);
+    location.replace(buildScopedUrl('login.html', ''));
   }
 }
 
@@ -983,6 +1060,10 @@ function mapTestAccountError(error) {
 
   if (/admin_get_test_account_access/i.test(message) && /schema cache/i.test(message)) {
     return 'Die neue Supabase-Funktion fehlt noch. Bitte die aktuelle supabase_admin_dashboard.sql einmal komplett im Supabase SQL Editor ausfuehren.';
+  }
+
+  if (/admin_rotate_test_account_access/i.test(message) && /schema cache/i.test(message)) {
+    return 'Die automatische Testaccount-Rotation fehlt noch in Supabase. Bitte die aktuelle supabase_admin_dashboard.sql einmal komplett ausfuehren.';
   }
 
   if (/admin_prepare_test_account/i.test(message) && /schema cache/i.test(message)) {

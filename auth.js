@@ -12,11 +12,14 @@ if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY ||
 const SESSION_PARAM = 'session';
 const HANDOFF_PARAM = 'handoff';
 const TEST_HANDOFF_PREFIX = 'ragebaiters:test-handoff:';
+const TEST_SESSION_META_PREFIX = 'ragebaiters:test-session:';
 const PENDING_SESSION_KEY = 'ragebaiters:pending-session';
 const currentSessionScope = readCurrentSessionScope();
+const isScopedTestSession = currentSessionScope === 'test-account'
+  || currentSessionScope.startsWith('test-account-');
 
 export const defaultSupabase = createSupabaseClient();
-export const supabase = currentSessionScope === 'test-account'
+export const supabase = isScopedTestSession
   ? createScopedClient(currentSessionScope)
   : defaultSupabase;
 
@@ -104,12 +107,48 @@ export async function getProfile(userId) {
   return data;
 }
 
+export async function resolveLoginEmail(identifier) {
+  await handoffReady;
+
+  const normalizedIdentifier = String(identifier || '').trim();
+  if (!normalizedIdentifier) return '';
+  if (normalizedIdentifier.includes('@')) return normalizedIdentifier.toLowerCase();
+
+  const { data, error } = await defaultSupabase.rpc('resolve_login_email', {
+    p_identifier: normalizedIdentifier
+  });
+
+  if (error) {
+    console.error('[Ragebaiters] Benutzername konnte nicht aufgeloest werden:', error);
+    return '';
+  }
+
+  return String(data || '').trim().toLowerCase();
+}
+
 export function createScopedClient(scope) {
   return createSupabaseClient(scope);
 }
 
 export function getCurrentSessionScope() {
   return currentSessionScope;
+}
+
+export function readScopedSessionMeta(scope = currentSessionScope) {
+  const safeScope = normalizeSessionScope(scope);
+  if (!safeScope) return null;
+
+  try {
+    return JSON.parse(sessionStorage.getItem(`${TEST_SESSION_META_PREFIX}${safeScope}`) || 'null');
+  } catch {
+    return null;
+  }
+}
+
+export function clearScopedSessionMeta(scope = currentSessionScope) {
+  const safeScope = normalizeSessionScope(scope);
+  if (!safeScope) return;
+  sessionStorage.removeItem(`${TEST_SESSION_META_PREFIX}${safeScope}`);
 }
 
 export function buildScopedUrl(path, scope = currentSessionScope, extraParams = {}) {
@@ -356,6 +395,7 @@ async function consumeScopedLoginHandoff() {
   if (payload.sessionScope && normalizeSessionScope(payload.sessionScope) !== currentSessionScope) return;
   if (Number(payload.expiresAt) && Date.now() > Number(payload.expiresAt)) return;
 
+  storeScopedSessionMeta(currentSessionScope, payload);
   await bootstrapScopedSession(payload);
 }
 
@@ -423,6 +463,18 @@ function applyScopedLinks() {
       // Ignoriert ungueltige oder externe Links.
     }
   });
+}
+
+function storeScopedSessionMeta(scope, payload) {
+  const safeScope = normalizeSessionScope(scope);
+  if (!safeScope) return;
+
+  sessionStorage.setItem(`${TEST_SESSION_META_PREFIX}${safeScope}`, JSON.stringify({
+    email: String(payload?.email || '').trim().toLowerCase(),
+    username: String(payload?.username || '').trim(),
+    role: String(payload?.role || '').trim().toLowerCase(),
+    expiresAt: Number(payload?.expiresAt || 0) || null
+  }));
 }
 
 function escapeAttr(value) {

@@ -50,12 +50,12 @@
 
           <form id="loginForm" class="auth-form" autocomplete="on">
             <label class="field">
-              <span>E-Mail</span>
-              <input type="email" name="email" required autofocus>
+              <span>Benutzername oder E-Mail</span>
+              <input type="text" name="identifier" required autofocus autocomplete="username">
             </label>
             <label class="field">
               <span>Passwort</span>
-              <input type="password" name="password" required>
+              <input type="password" name="password" required autocomplete="current-password">
             </label>
             <button type="submit" class="btn-primary" id="submitBtn">Anmelden</button>
           </form>
@@ -75,7 +75,7 @@
 
   <script src="config.js"></script>
   <script type="module">
-    import { supabase, initPage, getSessionUser, buildScopedUrl, waitForSessionUser, rememberPendingSession } from './auth.js?v=2026-04-22-3';
+    import { supabase, initPage, getSessionUser, buildScopedUrl, waitForSessionUser, rememberPendingSession, resolveLoginEmail } from './auth.js?v=2026-04-23-1';
     await initPage('login');
 
     // Wenn bereits eingeloggt -> Dashboard
@@ -92,8 +92,19 @@
       btn.textContent = 'Anmelden …';
 
       const fd = new FormData(form);
+      const identifier = fd.get('identifier').trim();
+      const email = await resolveLoginEmail(identifier);
+
+      if (!email) {
+        alertE.textContent = 'Benutzername oder Passwort falsch.';
+        alertE.hidden = false;
+        btn.disabled = false;
+        btn.textContent = 'Anmelden';
+        return;
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: fd.get('email').trim(),
+        email,
         password: fd.get('password'),
       });
 
@@ -120,7 +131,7 @@
     });
 
     function mapError(msg) {
-      if (/invalid login/i.test(msg)) return 'E-Mail oder Passwort falsch.';
+      if (/invalid login/i.test(msg)) return 'Benutzername oder Passwort falsch.';
       if (/email not confirmed/i.test(msg)) return 'Bitte zuerst die Bestätigungs-Mail öffnen.';
       return msg;
     }
