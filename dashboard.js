@@ -830,6 +830,11 @@ async function loadInstagramSettings() {
 async function saveInstagramSettings() {
   const payload = collectInstagramFormValues();
 
+  if (!payload.postUrl) {
+    setMessage(instagramMessage, 'Bitte mindestens den Instagram-Link eintragen.', 'error');
+    return;
+  }
+
   if (payload.postUrl && !isProbablyUrl(payload.postUrl)) {
     setMessage(instagramMessage, 'Bitte einen gueltigen Instagram-Link eintragen.', 'error');
     return;
@@ -869,6 +874,9 @@ function updateInstagramPreview() {
     return;
   }
 
+  const isReel = /instagram\.com\/(reel|p)\//i.test(payload.postUrl) && /\/reel\//i.test(payload.postUrl);
+  const fallbackTitle = isReel ? 'Neuester Instagram-Reel' : 'Neuester Instagram-Beitrag';
+
   const imageMarkup = payload.imageUrl
     ? `<img class="instagram-post-image" src="${escapeHtmlAttr(payload.imageUrl)}" alt="${escapeHtmlAttr(payload.title || 'Instagram-Vorschau')}">`
     : `
@@ -890,7 +898,7 @@ function updateInstagramPreview() {
         </div>
         <div class="instagram-post-copy">
           <span class="instagram-post-kicker">Vorschau</span>
-          <h3>${escapeHtml(payload.title || 'Neuester Instagram-Beitrag')}</h3>
+          <h3>${escapeHtml(payload.title || fallbackTitle)}</h3>
           <p>${escapeHtml(payload.caption || 'Hier erscheint dein hinterlegter Instagram-Beitrag im Look der Startseite.')}</p>
           <div class="instagram-post-meta">
             <span>@${escapeHtml(payload.username || 'die_ragebaiters')}</span>
