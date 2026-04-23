@@ -1455,6 +1455,12 @@ grant execute on function public.admin_mark_photo_as_troll(bigint) to authentica
 -- 2026-04-23: Username-Login + 5-Minuten-Testaccount-Rotation
 -- ============================================================
 
+drop function if exists public.admin_get_test_account_access();
+drop function if exists public.admin_rotate_test_account_access(text);
+drop function if exists public.resolve_login_email(text);
+drop function if exists public.hard_delete_user_account(uuid);
+drop function if exists public.admin_cleanup_expired_test_accounts(text);
+
 create table if not exists public.test_account_sessions (
   id uuid primary key default gen_random_uuid(),
   session_scope text not null unique,
