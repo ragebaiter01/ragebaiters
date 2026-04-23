@@ -489,6 +489,84 @@ end;
 $$;
 
 -- ============================================================
+-- Homepage Instagram Card (Design vorbereitet fuer Live-Sync)
+-- ============================================================
+
+drop function if exists public.get_homepage_instagram_post();
+drop function if exists public.admin_set_homepage_instagram_post(text, text, text, text, timestamptz, text);
+
+insert into public.site_settings (key, value_text)
+values
+  ('homepage_instagram_post_url', ''),
+  ('homepage_instagram_image_url', ''),
+  ('homepage_instagram_title', ''),
+  ('homepage_instagram_caption', ''),
+  ('homepage_instagram_posted_at', ''),
+  ('homepage_instagram_username', 'die_ragebaiters')
+on conflict (key) do nothing;
+
+create or replace function public.get_homepage_instagram_post()
+returns table (
+  post_url text,
+  image_url text,
+  title text,
+  caption text,
+  posted_at timestamptz,
+  username text
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select
+    coalesce((select value_text from public.site_settings where key = 'homepage_instagram_post_url'), '') as post_url,
+    coalesce((select value_text from public.site_settings where key = 'homepage_instagram_image_url'), '') as image_url,
+    coalesce((select value_text from public.site_settings where key = 'homepage_instagram_title'), '') as title,
+    coalesce((select value_text from public.site_settings where key = 'homepage_instagram_caption'), '') as caption,
+    nullif((select value_text from public.site_settings where key = 'homepage_instagram_posted_at'), '')::timestamptz as posted_at,
+    coalesce((select value_text from public.site_settings where key = 'homepage_instagram_username'), 'die_ragebaiters') as username;
+$$;
+
+create or replace function public.admin_set_homepage_instagram_post(
+  p_post_url text,
+  p_image_url text,
+  p_title text default '',
+  p_caption text default '',
+  p_posted_at timestamptz default null,
+  p_username text default 'die_ragebaiters'
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Nur Admins duerfen den Instagram-Beitrag auf der Startseite aendern.';
+  end if;
+
+  insert into public.site_settings (key, value_text, updated_at, updated_by)
+  values
+    ('homepage_instagram_post_url', trim(coalesce(p_post_url, '')), now(), auth.uid()),
+    ('homepage_instagram_image_url', trim(coalesce(p_image_url, '')), now(), auth.uid()),
+    ('homepage_instagram_title', trim(coalesce(p_title, '')), now(), auth.uid()),
+    ('homepage_instagram_caption', trim(coalesce(p_caption, '')), now(), auth.uid()),
+    ('homepage_instagram_posted_at', coalesce(p_posted_at::text, ''), now(), auth.uid()),
+    ('homepage_instagram_username', trim(coalesce(p_username, 'die_ragebaiters')), now(), auth.uid())
+  on conflict (key) do update
+    set value_text = excluded.value_text,
+        updated_at = excluded.updated_at,
+        updated_by = excluded.updated_by;
+
+  return true;
+end;
+$$;
+
+grant execute on function public.get_homepage_instagram_post() to anon, authenticated;
+grant execute on function public.admin_set_homepage_instagram_post(text, text, text, text, timestamptz, text) to authenticated;
+
+-- ============================================================
 -- Testaccount fuer Admin-Vorschau
 -- Erlaubt Admins, einen getrennten Observer-Testaccount in
 -- einem neuen Tab zu oeffnen, ohne ihren eigenen Login zu verlieren.

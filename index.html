@@ -108,14 +108,14 @@
       <div class="latest-media-head">
         <div>
           <span class="eyebrow">Instagram</span>
-          <h2 style="margin: 10px 0 4px;">Neuester Instagram-Content</h2>
-          <p style="color: var(--muted); margin: 0;">Ganz unten auf der Startseite wird euer oeffentliches Instagram-Profil eingebettet. Dadurch bleiben die aktuellsten Inhalte direkt sichtbar.</p>
+          <h2 style="margin: 10px 0 4px;">Neuester Instagram-Beitrag</h2>
+          <p style="color: var(--muted); margin: 0;">Der Bereich ist jetzt im Design der Seite vorbereitet und kann spaeter direkt an eine Live-Instagram-Datenquelle angebunden werden.</p>
         </div>
         <a href="https://www.instagram.com/die_ragebaiters/" target="_blank" rel="noopener">Instagram oeffnen</a>
       </div>
-      <div id="instagram-embed">
-        <article class="card instagram-card">
-          <div class="latest-media-empty">Instagram wird geladen...</div>
+      <div id="instagram-latest">
+        <article class="card instagram-post-card">
+          <div class="latest-media-empty">Instagram-Beitrag wird geladen...</div>
         </article>
       </div>
     </section>
@@ -133,7 +133,7 @@
 
   const topBannerImg = document.querySelector('.top-banner img');
   const latestMedia = document.getElementById('latest-media');
-  const instagramEmbed = document.getElementById('instagram-embed');
+  const instagramLatest = document.getElementById('instagram-latest');
   const instagramProfileUrl = 'https://www.instagram.com/die_ragebaiters/';
 
   const { data: bannerVariant } = await supabase.rpc('get_homepage_banner');
@@ -179,7 +179,7 @@
       </article>`;
   }
 
-  await renderInstagramProfileEmbed();
+  await renderLatestInstagramPost();
 
   function formatDate(value) {
     if (!value) return 'Unbekanntes Datum';
@@ -206,68 +206,91 @@
     return pub.publicUrl;
   }
 
-  async function renderInstagramProfileEmbed() {
-    if (!instagramEmbed) return;
+  async function renderLatestInstagramPost() {
+    if (!instagramLatest) return;
 
-    instagramEmbed.innerHTML = `
-      <article class="card instagram-card">
-        <div class="instagram-embed-shell">
-          <blockquote
-            class="instagram-media"
-            data-instgrm-permalink="${instagramProfileUrl}"
-            data-instgrm-version="14"
-            style="margin: 0 auto; max-width: 540px; width: 100%;">
-          </blockquote>
-        </div>
-        <div class="instagram-fallback" hidden>
-          <p>Instagram konnte hier gerade nicht direkt geladen werden.</p>
-          <a href="${instagramProfileUrl}" target="_blank" rel="noopener">Zum Instagram-Profil</a>
-        </div>
-      </article>`;
+    const { data, error } = await supabase.rpc('get_homepage_instagram_post');
+    const post = Array.isArray(data) ? data[0] : data;
 
-    const fallback = instagramEmbed.querySelector('.instagram-fallback');
-
-    try {
-      await ensureInstagramEmbedScript();
-      if (window.instgrm?.Embeds?.process) {
-        window.instgrm.Embeds.process();
-      }
-    } catch (embedError) {
-      console.error('[Ragebaiters] Instagram-Embed konnte nicht geladen werden:', embedError);
-      fallback.hidden = false;
+    if (error) {
+      console.error('[Ragebaiters] Instagram-Post konnte nicht geladen werden:', error);
+      instagramLatest.innerHTML = buildInstagramFallbackCard({
+        title: 'Instagram-Verbindung wird vorbereitet',
+        copy: 'Das Layout fuer den neuesten Instagram-Beitrag steht bereits. Die Live-Anbindung kann jetzt spaeter direkt an Meta oder eine Supabase-Synchronisierung angeschlossen werden.'
+      });
       return;
     }
 
-    window.setTimeout(() => {
-      const renderedIframe = instagramEmbed.querySelector('iframe');
-      const renderedBlock = instagramEmbed.querySelector('.instagram-media-rendered');
-      if (!renderedIframe && !renderedBlock && fallback) {
-        fallback.hidden = false;
-      }
-    }, 3500);
-  }
-
-  function ensureInstagramEmbedScript() {
-    if (window.instgrm?.Embeds?.process) {
-      return Promise.resolve();
+    if (!post?.post_url || !post?.image_url) {
+      instagramLatest.innerHTML = buildInstagramFallbackCard({
+        title: 'Noch kein Instagram-Beitrag hinterlegt',
+        copy: 'Sobald die Datenquelle verbunden ist, erscheint hier automatisch nur der aktuellste Instagram-Beitrag im Look der Website.'
+      });
+      return;
     }
 
-    return new Promise((resolve, reject) => {
-      const existing = document.querySelector('script[data-instagram-embed="1"]');
-      if (existing) {
-        existing.addEventListener('load', resolve, { once: true });
-        existing.addEventListener('error', reject, { once: true });
-        return;
-      }
+    instagramLatest.innerHTML = `
+      <article class="card instagram-post-card">
+        <div class="instagram-post-grid">
+          <a class="instagram-post-image-wrap" href="${escapeHtmlAttr(post.post_url)}" target="_blank" rel="noopener" aria-label="Instagram-Beitrag oeffnen">
+            <img class="instagram-post-image" src="${escapeHtmlAttr(post.image_url)}" alt="${escapeHtmlAttr(post.title || 'Neuester Instagram-Beitrag')}">
+            <span class="instagram-post-badge">Instagram</span>
+          </a>
+          <div class="instagram-post-copy">
+            <span class="instagram-post-kicker">Live vorbereitet</span>
+            <h3>${escapeHtml(post.title || 'Neuester Beitrag von die_ragebaiters')}</h3>
+            <p>${escapeHtml(post.caption || 'Der aktuellste Instagram-Beitrag kann hier im Stil der Website dargestellt werden.')}</p>
+            <div class="instagram-post-meta">
+              <span>@${escapeHtml(post.username || 'die_ragebaiters')}</span>
+              <span>${formatInstagramDate(post.posted_at)}</span>
+            </div>
+            <div class="instagram-post-actions">
+              <a href="${escapeHtmlAttr(post.post_url)}" target="_blank" rel="noopener">Beitrag ansehen</a>
+              <a class="instagram-post-secondary" href="${instagramProfileUrl}" target="_blank" rel="noopener">Profil oeffnen</a>
+            </div>
+          </div>
+        </div>
+      </article>`;
+  }
 
-      const script = document.createElement('script');
-      script.async = true;
-      script.src = 'https://www.instagram.com/embed.js';
-      script.dataset.instagramEmbed = '1';
-      script.addEventListener('load', resolve, { once: true });
-      script.addEventListener('error', reject, { once: true });
-      document.body.appendChild(script);
+  function buildInstagramFallbackCard({ title, copy }) {
+    return `
+      <article class="card instagram-post-card instagram-post-card-empty">
+        <div class="instagram-post-grid">
+          <div class="instagram-post-image-wrap instagram-post-placeholder" aria-hidden="true">
+            <span class="instagram-post-badge">Instagram</span>
+            <div class="instagram-post-placeholder-inner">
+              <strong>die_ragebaiters</strong>
+              <span>Neuester Post erscheint hier</span>
+            </div>
+          </div>
+          <div class="instagram-post-copy">
+            <span class="instagram-post-kicker">Design bereit</span>
+            <h3>${escapeHtml(title)}</h3>
+            <p>${escapeHtml(copy)}</p>
+            <div class="instagram-post-meta">
+              <span>@die_ragebaiters</span>
+              <span>Wartet auf Live-Daten</span>
+            </div>
+            <div class="instagram-post-actions">
+              <a href="${instagramProfileUrl}" target="_blank" rel="noopener">Instagram oeffnen</a>
+            </div>
+          </div>
+        </div>
+      </article>`;
+  }
+
+  function formatInstagramDate(value) {
+    if (!value) return 'Neuester Beitrag';
+    return new Date(value).toLocaleDateString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
     });
+  }
+
+  function escapeHtmlAttr(s) {
+    return escapeHtml(s).replace(/`/g, '&#96;');
   }
 </script>
 </body>
