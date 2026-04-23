@@ -11,7 +11,7 @@
 
   <div id="memberModal" class="modal">
     <div class="modal-content">
-      <span class="modal-close" onclick="closeModal()" style="position:absolute; right:20px; top:10px; font-size:2.5rem; cursor:pointer;">&times;</span>
+      <span class="modal-close" style="position:absolute; right:20px; top:10px; font-size:2.5rem; cursor:pointer;">&times;</span>
       <img id="modalImg" src="" alt="Profile" class="modal-img">
       <div id="modalRole" class="role-badge"></div>
       <h2 id="modalName" style="margin: 10px 0;"></h2>
@@ -52,39 +52,17 @@
       <span class="eyebrow">Roster</span>
       <h2 style="margin: 10px 0 40px;">Die Einheit</h2>
 
-      <h3 style="color: var(--accent); margin-bottom: 20px;">Teamführung</h3>
-      <div class="member-grid" style="grid-template-columns: 1fr;">
-        <div class="member-card" style="border: 2px solid var(--accent);" onclick="openMember('Yotzek (Ben)')">
-          <div class="role-badge">Teamführer</div>
-          <div style="font-size: 1.8rem; font-weight: 900;">Yotzek (Ben)</div>
+      <div id="teamLeaderSection">
+        <h3 style="color: var(--accent); margin-bottom: 20px;">Teamfuehrung</h3>
+        <div id="teamLeaderGrid" class="member-grid" style="grid-template-columns: 1fr;">
+          <div class="card" style="text-align:center; color: var(--muted);">Team wird geladen...</div>
         </div>
       </div>
 
-      <h3 style="margin: 40px 0 20px;">Operatoren</h3>
-      <div class="member-grid">
-        <div class="member-card" onclick="openMember('sneiper0 (Jason)')">
-          <div class="role-badge">Sniper</div>
-          <div style="font-weight:800;">sneiper0 (Jason)</div>
-        </div>
-        <div class="member-card" onclick="openMember('MundMbrothers (Michael)')">
-          <div class="role-badge">Medic</div>
-          <div style="font-weight:800;">MundMbrothers (Michael)</div>
-        </div>
-        <div class="member-card" onclick="openMember('Disccave (Nils)')">
-          <div class="role-badge">Breacher</div>
-          <div style="font-weight:800;">Disccave (Nils)</div>
-        </div>
-        <div class="member-card" onclick="openMember('Nathan Goldstein (Nathan)')">
-          <div class="role-badge">Support</div>
-          <div style="font-weight:800;">Nathan Goldstein (Nathan)</div>
-        </div>
-        <div class="member-card" onclick="openMember('Gemeral Richard (Riccardo)')">
-          <div class="role-badge">Breacher</div>
-          <div style="font-weight:800;">Gemeral Richard (Riccardo)</div>
-        </div>
-        <div class="member-card" onclick="openMember('Wolfgang')">
-          <div class="role-badge">Techniker</div>
-          <div style="font-weight:800;">Wolfgang</div>
+      <div id="teamOperatorSection">
+        <h3 style="margin: 40px 0 20px;">Operatoren</h3>
+        <div id="teamOperatorGrid" class="member-grid">
+          <div class="card" style="text-align:center; color: var(--muted);">Team wird geladen...</div>
         </div>
       </div>
     </section>
@@ -92,14 +70,136 @@
 
   <footer class="footer container">
     <div style="font-weight: 800;">die Ragebaiters</div>
-    <div style="font-size: 0.8rem; opacity: 0.6;">Est. 2026 • Made by sneiper0</div>
+    <div style="font-size: 0.8rem; opacity: 0.6;">Est. 2026 - Made by sneiper0</div>
   </footer>
 
-  <script src="script.js"></script>
   <script src="config.js"></script>
   <script type="module">
-    import { initPage } from './auth.js?v=2026-04-23-1';
-    initPage('team');
+    import { supabase, initPage } from './auth.js?v=2026-04-23-1';
+    await initPage('team');
+
+    const leaderGrid = document.getElementById('teamLeaderGrid');
+    const operatorGrid = document.getElementById('teamOperatorGrid');
+    const leaderSection = document.getElementById('teamLeaderSection');
+    const operatorSection = document.getElementById('teamOperatorSection');
+    const modal = document.getElementById('memberModal');
+    const modalImg = document.getElementById('modalImg');
+    const modalRole = document.getElementById('modalRole');
+    const modalName = document.getElementById('modalName');
+    const modalDesc = document.getElementById('modalDesc');
+    const modalClose = document.querySelector('.modal-close');
+
+    const fallbackTeamMembers = [
+      { id: 'ben', name: 'Yotzek (Ben)', role: 'Teamfuehrer', description: 'Ben koordiniert die Truppe und bewahrt selbst im Gefecht einen kuehlen Kopf.', image_url: 'images/benf.png', is_leader: true, sort_order: 10 },
+      { id: 'jason', name: 'sneiper0 (Jason)', role: 'Sniper', description: 'Praezisionsschuetze der Ragebaiters.', image_url: 'images/logo.png', is_leader: false, sort_order: 20 },
+      { id: 'michael', name: 'MundMbrothers (Michael)', role: 'Medic', description: 'Sorgt fuer die Einsatzfaehigkeit des Teams.', image_url: 'images/michi2.png', is_leader: false, sort_order: 30 },
+      { id: 'nils', name: 'Disccave (Nils)', role: 'Breacher / OG', description: 'Einer der OGs. Experte fuer Improvisation.', image_url: 'images/nils.png', is_leader: false, sort_order: 40 },
+      { id: 'nathan', name: 'Nathan Goldstein (Nathan)', role: 'Support', description: 'Gibt Feuerschutz mit hohem Munitionsdurchsatz.', image_url: 'images/nathan.png', is_leader: false, sort_order: 50 },
+      { id: 'riccardo', name: 'Gemeral Richard (Riccardo)', role: 'Breacher', description: 'Spezialist fuer CQB.', image_url: 'images/riccardo.png', is_leader: false, sort_order: 60 },
+      { id: 'wolfgang', name: 'Wolfgang', role: 'Techniker', description: 'Haelt die Markierer am Laufen.', image_url: 'images/wolfgang.png', is_leader: false, sort_order: 70 }
+    ];
+
+    let teamMembers = fallbackTeamMembers;
+
+    try {
+      const { data, error } = await supabase.rpc('get_team_members');
+      if (!error && Array.isArray(data)) {
+        teamMembers = normalizeTeamMembers(data);
+      }
+    } catch (error) {
+      console.error('[Ragebaiters] Team-Daten konnten nicht geladen werden:', error);
+    }
+
+    renderTeam(teamMembers);
+
+    modalClose?.addEventListener('click', closeModal);
+    window.addEventListener('click', event => {
+      if (event.target === modal) closeModal();
+    });
+
+    function renderTeam(members) {
+      const normalized = normalizeTeamMembers(members);
+      const leaders = normalized.filter(member => member.is_leader);
+      const operators = normalized.filter(member => !member.is_leader);
+
+      leaderSection.hidden = !leaders.length;
+      operatorSection.hidden = !operators.length;
+
+      leaderGrid.innerHTML = leaders.length
+        ? leaders.map(member => memberCardMarkup(member, true)).join('')
+        : '<div class="card" style="text-align:center; color: var(--muted);">Noch keine Teamfuehrung hinterlegt.</div>';
+
+      operatorGrid.innerHTML = operators.length
+        ? operators.map(member => memberCardMarkup(member, false)).join('')
+        : '<div class="card" style="text-align:center; color: var(--muted);">Noch keine Operatoren hinterlegt.</div>';
+
+      [...leaderGrid.querySelectorAll('.member-card'), ...operatorGrid.querySelectorAll('.member-card')].forEach(card => {
+        card.addEventListener('click', () => {
+          const memberId = card.dataset.memberId;
+          const member = normalized.find(entry => entry.id === memberId);
+          if (member) openMember(member);
+        });
+      });
+    }
+
+    function memberCardMarkup(member, isLeader) {
+      return `
+        <div class="member-card" data-member-id="${escapeHtmlAttr(member.id)}" ${isLeader ? 'style="border: 2px solid var(--accent);"' : ''}>
+          <div class="role-badge">${escapeHtml(member.role || (isLeader ? 'Teamfuehrung' : 'Operator'))}</div>
+          <div style="${isLeader ? 'font-size: 1.8rem; font-weight: 900;' : 'font-weight:800;'}">${escapeHtml(member.name || 'Unbekannt')}</div>
+        </div>`;
+    }
+
+    function openMember(member) {
+      modalName.innerText = member.name || 'Unbekannt';
+      modalRole.innerText = member.role || 'Operator';
+      modalDesc.innerText = member.description || 'Keine Beschreibung hinterlegt.';
+      modalImg.src = resolveTeamImage(member.image_url);
+      modalImg.alt = member.name || 'Teammitglied';
+      modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+      modal.style.display = 'none';
+    }
+
+    function resolveTeamImage(imageUrl) {
+      return String(imageUrl || '').trim() || 'images/logo.png';
+    }
+
+    function normalizeTeamMembers(rawMembers) {
+      const source = Array.isArray(rawMembers) ? rawMembers : fallbackTeamMembers;
+      return source
+        .map((member, index) => ({
+          id: String(member?.id || `member-${index + 1}`),
+          name: String(member?.name || ''),
+          role: String(member?.role || ''),
+          description: String(member?.description || member?.desc || ''),
+          image_url: String(member?.image_url || member?.img || ''),
+          is_leader: Boolean(member?.is_leader),
+          sort_order: Number(member?.sort_order || (index + 1) * 10) || (index + 1) * 10
+        }))
+        .sort((a, b) => {
+          if (Number(a.is_leader) !== Number(b.is_leader)) {
+            return Number(b.is_leader) - Number(a.is_leader);
+          }
+          return a.sort_order - b.sort_order;
+        });
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[char]));
+    }
+
+    function escapeHtmlAttr(value) {
+      return escapeHtml(value).replace(/`/g, '&#96;');
+    }
   </script>
 </body>
 </html>

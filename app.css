@@ -784,6 +784,124 @@
   display: grid;
 }
 
+.team-editor-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.team-editor-card {
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255,255,255,0.03);
+  display: grid;
+  gap: 18px;
+}
+
+.team-editor-card.is-leader {
+  border-color: rgba(183,255,60,0.28);
+  box-shadow: 0 0 0 1px rgba(183,255,60,0.08) inset;
+}
+
+.team-editor-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.team-editor-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.team-editor-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.team-editor-badge.is-leader {
+  color: var(--accent);
+  border-color: rgba(183,255,60,0.28);
+  background: rgba(183,255,60,0.1);
+}
+
+.team-editor-layout {
+  display: grid;
+  gap: 18px;
+}
+
+.team-editor-media {
+  display: grid;
+  gap: 14px;
+}
+
+.team-editor-image {
+  width: 100%;
+  max-width: 260px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.03);
+  display: block;
+}
+
+.team-editor-meta {
+  display: grid;
+  gap: 10px;
+}
+
+.team-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.team-editor-file {
+  display: none;
+}
+
+.team-editor-note {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.team-editor-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.team-editor-toggle input {
+  accent-color: var(--accent);
+}
+
+@media (min-width: 960px) {
+  .team-editor-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .team-editor-layout {
+    grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
 .inline-field {
   display: grid;
   gap: 6px;

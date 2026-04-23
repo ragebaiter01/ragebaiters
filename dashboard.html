@@ -63,6 +63,7 @@
             <button type="button" class="dashboard-tab role-member-up" data-view="users">Mitglieder</button>
             <button type="button" class="dashboard-tab role-admin-only" data-view="invites">Einladungscodes</button>
             <button type="button" class="dashboard-tab role-admin-only" data-view="banner">Startseiten-Banner</button>
+            <button type="button" class="dashboard-tab" data-view="team">Team</button>
           </div>
           <div class="dashboard-sidebar-note" id="memberNote" hidden>
             Dein Zugriff richtet sich nach deiner Rolle. Admin-Funktionen bleiben nur fuer Team-Admins sichtbar.
@@ -343,6 +344,32 @@
             </div>
           </section>
 
+          <section class="dashboard-view" id="view-team" hidden>
+            <div class="panel-head">
+              <div>
+                <h3>Team verwalten</h3>
+                <p>Bilder, Kacheln und Verknuepfungen zu Benutzerkonten direkt hier pflegen.</p>
+              </div>
+              <div class="form-actions">
+                <button type="button" class="btn-secondary" id="addTeamMemberBtn">Neue Kachel</button>
+                <button type="button" class="btn-primary" id="saveTeamMembersBtn">Team speichern</button>
+              </div>
+            </div>
+
+            <div class="card admin-card">
+              <div class="panel-head compact">
+                <div>
+                  <h3>Team-Mitglieder</h3>
+                  <p>Admins koennen Kacheln anlegen, loeschen und mit Benutzerkonten verknuepfen. Verknuepfte Personen koennen ihre eigene Kachel spaeter selbst pflegen.</p>
+                </div>
+              </div>
+              <div id="teamMembersEditor" class="team-editor-grid">
+                <div class="table-empty">Team-Daten werden geladen...</div>
+              </div>
+              <div class="admin-message" id="teamMembersMessage" hidden></div>
+            </div>
+          </section>
+
           <section class="dashboard-view role-member-up-view" id="view-users" hidden>
             <div class="panel-head">
               <div>
@@ -386,6 +413,6 @@
   </footer>
 
   <script src="config.js"></script>
-  <script type="module" src="dashboard.js?v=2026-04-23-2"></script>
+  <script type="module" src="dashboard.js?v=2026-04-23-3"></script>
 </body>
 </html>

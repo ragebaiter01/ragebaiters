@@ -22,6 +22,8 @@ drop function if exists public.hard_delete_user_account(uuid);
 drop function if exists public.admin_cleanup_expired_test_accounts(text);
 drop function if exists public.get_homepage_instagram_post();
 drop function if exists public.admin_set_homepage_instagram_post(text, text, text, text, timestamptz, text);
+drop function if exists public.get_team_members();
+drop function if exists public.admin_set_team_members(jsonb);
 
 create table if not exists public.site_settings (
   key text primary key,
@@ -572,6 +574,70 @@ $$;
 
 grant execute on function public.get_homepage_instagram_post() to anon, authenticated;
 grant execute on function public.admin_set_homepage_instagram_post(text, text, text, text, timestamptz, text) to authenticated;
+
+-- ============================================================
+-- Team-Verwaltung fuer Dashboard + Team-Seite
+-- ============================================================
+
+drop function if exists public.get_team_members();
+drop function if exists public.admin_set_team_members(jsonb);
+
+insert into public.site_settings (key, value_text)
+values (
+  'team_members_json',
+  $$[
+    {"id":"ben","name":"Yotzek (Ben)","role":"Teamfuehrer","description":"Ben koordiniert die Truppe und bewahrt selbst im Gefecht einen kuehlen Kopf.","image_url":"images/benf.png","is_leader":true,"sort_order":10},
+    {"id":"jason","name":"sneiper0 (Jason)","role":"Sniper","description":"Praezisionsschuetze der Ragebaiters.","image_url":"images/logo.png","is_leader":false,"sort_order":20},
+    {"id":"michael","name":"MundMbrothers (Michael)","role":"Medic","description":"Sorgt fuer die Einsatzfaehigkeit des Teams.","image_url":"images/michi2.png","is_leader":false,"sort_order":30},
+    {"id":"nils","name":"Disccave (Nils)","role":"Breacher / OG","description":"Einer der OGs. Experte fuer Improvisation.","image_url":"images/nils.png","is_leader":false,"sort_order":40},
+    {"id":"nathan","name":"Nathan Goldstein (Nathan)","role":"Support","description":"Gibt Feuerschutz mit hohem Munitionsdurchsatz.","image_url":"images/nathan.png","is_leader":false,"sort_order":50},
+    {"id":"riccardo","name":"Gemeral Richard (Riccardo)","role":"Breacher","description":"Spezialist fuer CQB.","image_url":"images/riccardo.png","is_leader":false,"sort_order":60},
+    {"id":"wolfgang","name":"Wolfgang","role":"Techniker","description":"Haelt die Markierer am Laufen.","image_url":"images/wolfgang.png","is_leader":false,"sort_order":70}
+  ]$$
+)
+on conflict (key) do nothing;
+
+create or replace function public.get_team_members()
+returns jsonb
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select coalesce(
+    (select value_text::jsonb from public.site_settings where key = 'team_members_json'),
+    '[]'::jsonb
+  );
+$$;
+
+create or replace function public.admin_set_team_members(p_members jsonb)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Nur Admins duerfen die Team-Seite bearbeiten.';
+  end if;
+
+  if jsonb_typeof(coalesce(p_members, 'null'::jsonb)) <> 'array' then
+    raise exception 'Die Team-Daten muessen als JSON-Array gespeichert werden.';
+  end if;
+
+  insert into public.site_settings (key, value_text, updated_at, updated_by)
+  values ('team_members_json', p_members::text, now(), auth.uid())
+  on conflict (key) do update
+    set value_text = excluded.value_text,
+        updated_at = excluded.updated_at,
+        updated_by = excluded.updated_by;
+
+  return true;
+end;
+$$;
+
+grant execute on function public.get_team_members() to anon, authenticated;
+grant execute on function public.admin_set_team_members(jsonb) to authenticated;
 
 -- ============================================================
 -- Testaccount fuer Admin-Vorschau
