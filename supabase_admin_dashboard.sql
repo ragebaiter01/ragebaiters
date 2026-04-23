@@ -795,15 +795,15 @@ begin
   where id = p_user_id;
 
   if to_regclass('auth.sessions') is not null then
-    execute 'delete from auth.sessions where user_id = $1' using p_user_id;
+    execute 'delete from auth.sessions where user_id::text = $1' using p_user_id::text;
   end if;
 
   if to_regclass('auth.refresh_tokens') is not null then
-    execute 'delete from auth.refresh_tokens where user_id = $1' using p_user_id;
+    execute 'delete from auth.refresh_tokens where user_id::text = $1' using p_user_id::text;
   end if;
 
   if to_regclass('auth.identities') is not null then
-    execute 'delete from auth.identities where user_id = $1' using p_user_id;
+    execute 'delete from auth.identities where user_id::text = $1' using p_user_id::text;
   end if;
 
   delete from auth.users
@@ -1385,15 +1385,15 @@ begin
   where id = p_user_id;
 
   if to_regclass('auth.sessions') is not null then
-    execute 'delete from auth.sessions where user_id = $1' using p_user_id;
+    execute 'delete from auth.sessions where user_id::text = $1' using p_user_id::text;
   end if;
 
   if to_regclass('auth.refresh_tokens') is not null then
-    execute 'delete from auth.refresh_tokens where user_id = $1' using p_user_id;
+    execute 'delete from auth.refresh_tokens where user_id::text = $1' using p_user_id::text;
   end if;
 
   if to_regclass('auth.identities') is not null then
-    execute 'delete from auth.identities where user_id = $1' using p_user_id;
+    execute 'delete from auth.identities where user_id::text = $1' using p_user_id::text;
   end if;
 
   delete from auth.users
@@ -1582,15 +1582,15 @@ begin
   where auth_user_id = p_user_id;
 
   if to_regclass('auth.sessions') is not null then
-    execute 'delete from auth.sessions where user_id = $1' using p_user_id;
+    execute 'delete from auth.sessions where user_id::text = $1' using p_user_id::text;
   end if;
 
   if to_regclass('auth.refresh_tokens') is not null then
-    execute 'delete from auth.refresh_tokens where user_id = $1' using p_user_id;
+    execute 'delete from auth.refresh_tokens where user_id::text = $1' using p_user_id::text;
   end if;
 
   if to_regclass('auth.identities') is not null then
-    execute 'delete from auth.identities where user_id = $1' using p_user_id;
+    execute 'delete from auth.identities where user_id::text = $1' using p_user_id::text;
   end if;
 
   delete from auth.users
