@@ -57,7 +57,7 @@
         <div>
           <h2 style="margin: 10px 0 4px;">Willkommen, <span id="hello">...</span></h2>
           <p style="color: var(--muted); margin: 0;">Verwalte hier Uploads, Einladungen, Startseiten-Banner und Benutzer.</p>
-          <p style="color: var(--accent); margin: 8px 0 0; font-size: 0.9rem; font-weight: 700;">Dashboard-Version: 2026-04-22 Review 2</p>
+          <p style="color: var(--accent); margin: 8px 0 0; font-size: 0.9rem; font-weight: 700;">Dashboard-Version: 2026-04-24 Banner Access</p>
         </div>
         <div class="dashboard-role" id="roleBadge">Mitglied</div>
       </div>
@@ -70,7 +70,7 @@
             <button type="button" class="dashboard-tab role-member-up" data-view="uploads">Uploads</button>
             <button type="button" class="dashboard-tab role-member-up" data-view="users">Mitglieder</button>
             <button type="button" class="dashboard-tab role-admin-only" data-view="invites">Einladungscodes</button>
-            <button type="button" class="dashboard-tab role-admin-only" data-view="banner">Startseiten-Banner</button>
+            <button type="button" class="dashboard-tab" data-view="banner">Startseiten-Banner</button>
             <button type="button" class="dashboard-tab" data-view="team">Team</button>
           </div>
           <div class="dashboard-sidebar-note" id="memberNote" hidden>
@@ -243,12 +243,15 @@
             </div>
           </section>
 
-          <section class="dashboard-view role-admin-view" id="view-banner" hidden>
+          <section class="dashboard-view" id="view-banner" hidden>
             <div class="panel-head">
               <div>
                 <h3>Startseite verwalten</h3>
                 <p>Pflege hier Banner und den Instagram-Beitrag, der unten auf der Startseite erscheinen soll.</p>
               </div>
+            </div>
+            <div class="card access-note" id="bannerAccessHint" hidden>
+              Du kannst die aktuelle Startseiten-Konfiguration sehen, aber nur Admins dürfen Banner und Instagram-Einstellungen ändern.
             </div>
 
             <div class="banner-settings-grid">
@@ -436,6 +439,6 @@
 
   <script src="nav.js?v=2026-04-23-1" defer></script>
   <script src="config.js"></script>
-  <script type="module" src="dashboard.js?v=2026-04-24-1"></script>
+  <script type="module" src="dashboard.js?v=2026-04-24-2"></script>
 </body>
 </html>
