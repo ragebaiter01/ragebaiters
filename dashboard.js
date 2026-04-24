@@ -311,7 +311,7 @@ async function openTestAccountSession() {
 
     setMessage(
       testAccountMessage,
-      'Testaccount im neuen Tab geoeffnet. Er wird nach 5 Minuten automatisch ersetzt, dein Admin-Login bleibt hier aktiv.',
+      'Testaccount im neuen Tab geöffnet. Er wird nach 5 Minuten automatisch ersetzt, dein Admin-Login bleibt hier aktiv.',
       'success'
     );
   } catch (error) {
@@ -319,7 +319,7 @@ async function openTestAccountSession() {
     const message = mapTestAccountError(error);
     setMessage(
       testAccountMessage,
-      `Testaccount konnte nicht geoeffnet werden: ${message}`,
+      `Testaccount konnte nicht geöffnet werden: ${message}`,
       'error'
     );
   }
@@ -383,9 +383,9 @@ async function rotateTestAccountSession() {
 
 function setupWelcome() {
   const introByRole = {
-    observer: 'Du bist als Beobachter eingeloggt. Du kannst Bilder hochladen, diese muessen aber erst von einem Admin freigegeben werden.',
+    observer: 'Du bist als Beobachter eingeloggt. Du kannst Bilder hochladen, diese müssen aber erst von einem Admin freigegeben werden.',
     member: 'Du bist als Mitglied eingeloggt. Du kannst Bilder hochladen und die Mitgliederliste ansehen.',
-    admin: 'Du bist als Admin eingeloggt. Alle Bereiche des Dashboards stehen dir vollstaendig zur Verfuegung.'
+    admin: 'Du bist als Admin eingeloggt. Alle Bereiche des Dashboards stehen dir vollständig zur Verfügung.'
   };
 
   welcomeIntro.textContent = introByRole[state.role] || introByRole.observer;
@@ -396,22 +396,22 @@ function setupWelcome() {
       'Uploads',
       state.canUpload ? 'Freigeschaltet' : 'Gesperrt',
       state.role === 'observer'
-        ? 'Bilder hochladen. Ein Admin muss sie freigeben, bevor sie oeffentlich erscheinen.'
+        ? 'Bilder hochladen. Ein Admin muss sie freigeben, bevor sie öffentlich erscheinen.'
         : state.canUpload
           ? 'Bilder hochladen und eigene Uploads verwalten.'
-          : 'Nur fuer Mitglieder, Beobachter und Admins freigeschaltet.'
+          : 'Nur für Mitglieder, Beobachter und Admins freigeschaltet.'
     ),
     capabilityCard(
       'Mitglieder',
       state.canViewUsers ? 'Freigeschaltet' : 'Gesperrt',
       state.canViewUsers
         ? (state.isAdmin ? 'Alle Benutzer sehen und verwalten.' : 'Mitgliederliste in reiner Lesesicht.')
-        : 'Nur fuer Mitglieder und Admins freigeschaltet.'
+        : 'Nur für Mitglieder und Admins freigeschaltet.'
     ),
     capabilityCard(
       'Admin-Funktionen',
       state.isAdmin ? 'Freigeschaltet' : 'Gesperrt',
-      state.isAdmin ? 'Einladungscodes, Banner und Benutzerverwaltung komplett verfuegbar.' : 'Nur fuer Admins sichtbar.'
+      state.isAdmin ? 'Einladungscodes, Banner und Benutzerverwaltung komplett verfügbar.' : 'Nur für Admins sichtbar.'
     )
   ];
 
@@ -421,12 +421,12 @@ function setupWelcome() {
 function setupUserSectionCopy() {
   if (state.isAdmin) {
     usersTitle.textContent = 'Benutzerverwaltung';
-    usersIntro.textContent = 'Alle Benutzer ansehen, Rollen anpassen, Benutzernamen aendern und Accounts loeschen.';
+    usersIntro.textContent = 'Alle Benutzer ansehen, Rollen anpassen, Benutzernamen ändern und Accounts löschen.';
     return;
   }
 
   usersTitle.textContent = 'Mitglieder';
-  usersIntro.textContent = 'Hier kannst du alle Benutzer der Website ansehen. Bearbeiten ist fuer Mitglieder nicht moeglich.';
+  usersIntro.textContent = 'Hier kannst du alle Benutzer der Website ansehen. Bearbeiten ist für Mitglieder nicht möglich.';
 }
 
 function handleUploadFiles(files) {
@@ -521,7 +521,7 @@ async function loadMyPhotos() {
     fig.className = 'photo-item';
 
     const actions = state.isAdmin
-      ? `<button class="btn-delete" type="button" data-id="${photo.id}" data-path="${encodeURIComponent(photo.storage_path)}" title="Loeschen">x</button>`
+      ? `<button class="btn-delete" type="button" data-id="${photo.id}" data-path="${encodeURIComponent(photo.storage_path)}" title="Löschen">x</button>`
       : '';
 
     fig.innerHTML = `
@@ -542,7 +542,7 @@ async function loadMyPhotos() {
 
   grid.querySelectorAll('.btn-delete').forEach(btn => {
     btn.addEventListener('click', async () => {
-      if (!confirm('Dieses Foto wirklich loeschen?')) return;
+      if (!confirm('Dieses Foto wirklich löschen?')) return;
 
       const id = Number(btn.dataset.id);
       const path = decodeURIComponent(btn.dataset.path);
@@ -559,7 +559,7 @@ async function loadMyPhotos() {
       });
 
       if (dbError) return alert(dbError.message);
-      if (!deleted) return alert('Foto konnte nicht geloescht werden.');
+      if (!deleted) return alert('Foto konnte nicht gelöscht werden.');
 
       loadMyPhotos();
       if (state.isAdmin) loadPendingReviews();
@@ -570,7 +570,7 @@ async function loadMyPhotos() {
 async function loadPendingReviews() {
   if (!state.isAdmin || !pendingReviews) return;
 
-  pendingReviews.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Pruefe Uploads...</div>';
+  pendingReviews.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Prüfe Uploads...</div>';
 
   const { data, error } = await supabase
     .from('photos')
@@ -623,7 +623,7 @@ async function loadPendingReviews() {
         <div class="table-actions">
           <button class="btn-tertiary" type="button" data-action="approve" data-id="${photo.id}">Freigeben</button>
           <button class="btn-danger" type="button" data-action="troll" data-id="${photo.id}">Troll</button>
-          <button class="btn-danger" type="button" data-action="delete-review" data-id="${photo.id}" data-path="${encodeURIComponent(photo.storage_path)}">Loeschen</button>
+          <button class="btn-danger" type="button" data-action="delete-review" data-id="${photo.id}" data-path="${encodeURIComponent(photo.storage_path)}">Löschen</button>
         </div>
       </figcaption>`;
     grid.appendChild(fig);
@@ -657,7 +657,7 @@ async function loadPendingReviews() {
     btn.addEventListener('click', async () => {
       const photoId = Number(btn.dataset.id);
       const photoPath = decodeURIComponent(btn.dataset.path || '');
-      if (!confirm('Diesen Upload wirklich loeschen?')) return;
+      if (!confirm('Diesen Upload wirklich löschen?')) return;
 
       if (photoPath && !isLocalPhotoPath(photoPath)) {
         const { error: storageError } = await supabase.storage.from('photos').remove([photoPath]);
@@ -671,7 +671,7 @@ async function loadPendingReviews() {
       });
 
       if (deleteError) return alert(deleteError.message);
-      if (!deleted) return alert('Upload konnte nicht geloescht werden.');
+      if (!deleted) return alert('Upload konnte nicht gelöscht werden.');
 
       await Promise.all([loadPendingReviews(), loadMyPhotos()]);
     });
@@ -745,7 +745,7 @@ async function loadInvites() {
       <td>
         <div class="table-actions">
           <button type="button" class="btn-tertiary" data-action="copy" data-code="${escapeHtmlAttr(invite.code)}">Kopieren</button>
-          <button type="button" class="btn-danger" data-action="delete-invite" data-code="${escapeHtmlAttr(invite.code)}">Loeschen</button>
+          <button type="button" class="btn-danger" data-action="delete-invite" data-code="${escapeHtmlAttr(invite.code)}">Löschen</button>
         </div>
       </td>
     </tr>`).join('');
@@ -765,16 +765,16 @@ async function loadInvites() {
   inviteRows.querySelectorAll('[data-action="delete-invite"]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const code = btn.dataset.code;
-      if (!confirm(`Einladungscode ${code} wirklich loeschen?`)) return;
+      if (!confirm(`Einladungscode ${code} wirklich löschen?`)) return;
 
       const { error: deleteError } = await supabase.rpc('admin_delete_invite', { p_code: code });
 
       if (deleteError) {
-        setMessage(inviteMessage, `Code konnte nicht geloescht werden: ${deleteError.message}`, 'error');
+        setMessage(inviteMessage, `Code konnte nicht gelöscht werden: ${deleteError.message}`, 'error');
         return;
       }
 
-      setMessage(inviteMessage, `Code geloescht: ${code}`, 'success');
+      setMessage(inviteMessage, `Code gelöscht: ${code}`, 'success');
       await loadInvites();
     });
   });
@@ -844,12 +844,12 @@ async function saveInstagramSettings() {
   }
 
   if (payload.postUrl && !isProbablyUrl(payload.postUrl)) {
-    setMessage(instagramMessage, 'Bitte einen gueltigen Instagram-Link eintragen.', 'error');
+    setMessage(instagramMessage, 'Bitte einen gültigen Instagram-Link eintragen.', 'error');
     return;
   }
 
   if (payload.imageUrl && !isProbablyUrl(payload.imageUrl)) {
-    setMessage(instagramMessage, 'Bitte eine gueltige direkte Bild- oder Cover-URL eintragen.', 'error');
+    setMessage(instagramMessage, 'Bitte eine gültige direkte Bild- oder Cover-URL eintragen.', 'error');
     return;
   }
 
@@ -868,7 +868,7 @@ async function saveInstagramSettings() {
   }
 
   updateInstagramPreview();
-  setMessage(instagramMessage, 'Instagram-Beitrag fuer die Startseite gespeichert.', 'success');
+  setMessage(instagramMessage, 'Instagram-Beitrag für die Startseite gespeichert.', 'success');
 }
 
 async function loadTeamMembers() {
@@ -923,7 +923,7 @@ function renderTeamMembersEditor() {
           <strong>${escapeHtml(member.name || 'Unbenanntes Mitglied')}</strong>
         </div>
         <div class="team-editor-badges">
-          <span class="team-editor-badge ${member.is_leader ? 'is-leader' : ''}">${member.is_leader ? 'Teamfuehrung' : 'Operator'}</span>
+          <span class="team-editor-badge ${member.is_leader ? 'is-leader' : ''}">${member.is_leader ? 'Teamführung' : 'Operator'}</span>
           <span class="team-editor-badge">Sortierung ${member.sort_order}</span>
         </div>
       </div>
@@ -931,7 +931,7 @@ function renderTeamMembersEditor() {
         <div class="team-editor-media">
           <img class="team-editor-image" src="${escapeHtmlAttr(resolveTeamMemberImage(member.image_url))}" alt="${escapeHtmlAttr(member.name || 'Teammitglied')}" data-preview-image onerror="this.src='images/logo.png'">
           <div class="team-editor-actions">
-            <button type="button" class="btn-secondary" data-action="choose-team-image">Bild auswaehlen</button>
+            <button type="button" class="btn-secondary" data-action="choose-team-image">Bild auswählen</button>
             <input class="team-editor-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-action="team-image-file">
           </div>
           <div class="team-editor-note">Empfohlen: quadratisches Bild als JPG, PNG, WebP oder GIF.</div>
@@ -959,11 +959,11 @@ function renderTeamMembersEditor() {
           </div>
           <label class="team-editor-toggle">
             <input type="checkbox" data-field="is_leader" ${member.is_leader ? 'checked' : ''}>
-            <span>Zur Teamfuehrung zaehlen</span>
+            <span>Zur Teamführung zählen</span>
           </label>
           <label class="field">
             <span>Beschreibung</span>
-            <textarea class="upload-caption-input" maxlength="500" data-field="description" placeholder="Beschreibung fuer die Team-Seite.">${escapeHtml(member.description)}</textarea>
+            <textarea class="upload-caption-input" maxlength="500" data-field="description" placeholder="Beschreibung für die Team-Seite.">${escapeHtml(member.description)}</textarea>
           </label>
         </div>
       </div>
@@ -1032,7 +1032,7 @@ async function uploadTeamMemberImage(memberId, file) {
   if (!memberId || !file) return;
 
   if (!ALLOWED_MIME.includes(file.type)) {
-    setMessage(teamMembersMessage, 'Dateityp fuer Team-Bilder nicht erlaubt.', 'error');
+    setMessage(teamMembersMessage, 'Dateityp für Team-Bilder nicht erlaubt.', 'error');
     return;
   }
 
@@ -1088,13 +1088,13 @@ function normalizeTeamMembers(rawMembers) {
 
 function defaultTeamMembers() {
   return [
-    { id: 'ben', name: 'Yotzek (Ben)', role: 'Teamfuehrer', description: 'Ben koordiniert die Truppe und bewahrt selbst im Gefecht einen kuehlen Kopf.', image_url: 'images/benf.png', is_leader: true, sort_order: 10 },
-    { id: 'jason', name: 'sneiper0 (Jason)', role: 'Sniper', description: 'Praezisionsschuetze der Ragebaiters.', image_url: 'images/logo.png', is_leader: false, sort_order: 20 },
-    { id: 'michael', name: 'MundMbrothers (Michael)', role: 'Medic', description: 'Sorgt fuer die Einsatzfaehigkeit des Teams.', image_url: 'images/michi2.png', is_leader: false, sort_order: 30 },
-    { id: 'nils', name: 'Disccave (Nils)', role: 'Breacher / OG', description: 'Einer der OGs. Experte fuer Improvisation.', image_url: 'images/nils.png', is_leader: false, sort_order: 40 },
+    { id: 'ben', name: 'Yotzek (Ben)', role: 'Teamführer', description: 'Ben koordiniert die Truppe und bewahrt selbst im Gefecht einen kühlen Kopf.', image_url: 'images/benf.png', is_leader: true, sort_order: 10 },
+    { id: 'jason', name: 'sneiper0 (Jason)', role: 'Sniper', description: 'Präzisionsschütze der Ragebaiters.', image_url: 'images/logo.png', is_leader: false, sort_order: 20 },
+    { id: 'michael', name: 'MundMbrothers (Michael)', role: 'Medic', description: 'Sorgt für die Einsatzfähigkeit des Teams.', image_url: 'images/michi2.png', is_leader: false, sort_order: 30 },
+    { id: 'nils', name: 'Disccave (Nils)', role: 'Breacher / OG', description: 'Einer der OGs. Experte für Improvisation.', image_url: 'images/nils.png', is_leader: false, sort_order: 40 },
     { id: 'nathan', name: 'Nathan Goldstein (Nathan)', role: 'Support', description: 'Gibt Feuerschutz mit hohem Munitionsdurchsatz.', image_url: 'images/nathan.png', is_leader: false, sort_order: 50 },
-    { id: 'riccardo', name: 'Gemeral Richard (Riccardo)', role: 'Breacher', description: 'Spezialist fuer CQB.', image_url: 'images/riccardo.png', is_leader: false, sort_order: 60 },
-    { id: 'wolfgang', name: 'Wolfgang', role: 'Techniker', description: 'Haelt die Markierer am Laufen.', image_url: 'images/wolfgang.png', is_leader: false, sort_order: 70 }
+    { id: 'riccardo', name: 'Gemeral Richard (Riccardo)', role: 'Breacher', description: 'Spezialist für CQB.', image_url: 'images/riccardo.png', is_leader: false, sort_order: 60 },
+    { id: 'wolfgang', name: 'Wolfgang', role: 'Techniker', description: 'Hält die Markierer am Laufen.', image_url: 'images/wolfgang.png', is_leader: false, sort_order: 70 }
   ];
 }
 
@@ -1166,7 +1166,7 @@ function updateInstagramPreview() {
           </div>
           <div class="instagram-post-actions">
             ${primaryAction}
-            <a class="instagram-post-secondary" href="https://www.instagram.com/die_ragebaiters/" target="_blank" rel="noopener">Profil oeffnen</a>
+            <a class="instagram-post-secondary" href="https://www.instagram.com/die_ragebaiters/" target="_blank" rel="noopener">Profil öffnen</a>
           </div>
         </div>
       </div>
@@ -1323,7 +1323,7 @@ async function loadUsers() {
       <td>
         <div class="table-actions">
           <button type="button" class="btn-tertiary" data-action="save-user">Speichern</button>
-          <button type="button" class="btn-danger" data-action="delete-user" ${entry.id === state.user.id ? 'disabled' : ''}>Loeschen</button>
+          <button type="button" class="btn-danger" data-action="delete-user" ${entry.id === state.user.id ? 'disabled' : ''}>Löschen</button>
         </div>
       </td>
     </tr>`).join('');
@@ -1363,7 +1363,7 @@ async function loadUsers() {
       }
 
       const username = row.querySelector('[data-field="username"]').value.trim() || 'dieses Konto';
-      if (!confirm(`Benutzer ${username} wirklich loeschen?`)) return;
+      if (!confirm(`Benutzer ${username} wirklich löschen?`)) return;
 
       btn.disabled = true;
       await removeUserPhotosFromStorage(userId);
@@ -1371,16 +1371,16 @@ async function loadUsers() {
       btn.disabled = false;
 
       if (deleteError) {
-        setMessage(userMessage, `Benutzer konnte nicht geloescht werden: ${deleteError.message}`, 'error');
+        setMessage(userMessage, `Benutzer konnte nicht gelöscht werden: ${deleteError.message}`, 'error');
         return;
       }
 
       if (!deleted) {
-        setMessage(userMessage, 'Benutzer konnte nicht geloescht werden. Bitte Seite neu laden und erneut versuchen.', 'error');
+        setMessage(userMessage, 'Benutzer konnte nicht gelöscht werden. Bitte Seite neu laden und erneut versuchen.', 'error');
         return;
       }
 
-      setMessage(userMessage, `Benutzer geloescht: ${username}`, 'success');
+      setMessage(userMessage, `Benutzer gelöscht: ${username}`, 'success');
       await loadUsers();
     });
   });
@@ -1395,7 +1395,7 @@ async function removeUserPhotosFromStorage(userId) {
     .eq('user_id', userId);
 
   if (error) {
-    console.warn('[Ragebaiters] User-Fotos konnten vor dem Loeschen nicht geladen werden:', error);
+    console.warn('[Ragebaiters] User-Fotos konnten vor dem Löschen nicht geladen werden:', error);
     return;
   }
 
@@ -1407,7 +1407,7 @@ async function removeUserPhotosFromStorage(userId) {
 
   const { error: storageError } = await supabase.storage.from('photos').remove(paths);
   if (storageError) {
-    console.warn('[Ragebaiters] User-Fotos konnten vor dem Loeschen nicht vollstaendig entfernt werden:', storageError);
+    console.warn('[Ragebaiters] User-Fotos konnten vor dem Löschen nicht vollständig entfernt werden:', storageError);
   }
 }
 
@@ -1547,15 +1547,15 @@ function mapTestAccountError(error) {
   const message = String(error?.message || error || '');
 
   if (/admin_get_test_account_access/i.test(message) && /schema cache/i.test(message)) {
-    return 'Die neue Supabase-Funktion fehlt noch. Bitte die aktuelle supabase_admin_dashboard.sql einmal komplett im Supabase SQL Editor ausfuehren.';
+    return 'Die neue Supabase-Funktion fehlt noch. Bitte die aktuelle supabase_admin_dashboard.sql einmal komplett im Supabase SQL Editor ausführen.';
   }
 
   if (/admin_rotate_test_account_access/i.test(message) && /schema cache/i.test(message)) {
-    return 'Die automatische Testaccount-Rotation fehlt noch in Supabase. Bitte die aktuelle supabase_admin_dashboard.sql einmal komplett ausfuehren.';
+    return 'Die automatische Testaccount-Rotation fehlt noch in Supabase. Bitte die aktuelle supabase_admin_dashboard.sql einmal komplett ausführen.';
   }
 
   if (/admin_prepare_test_account/i.test(message) && /schema cache/i.test(message)) {
-    return 'Die Testaccount-Vorbereitung fehlt noch in Supabase. Bitte die aktuelle supabase_admin_dashboard.sql einmal komplett ausfuehren.';
+    return 'Die Testaccount-Vorbereitung fehlt noch in Supabase. Bitte die aktuelle supabase_admin_dashboard.sql einmal komplett ausführen.';
   }
 
   return message || 'Unbekannter Fehler';
