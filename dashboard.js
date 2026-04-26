@@ -1,26 +1,15 @@
-import {
-  supabase,
-  defaultSupabase,
-  initPage,
-  getSessionUser,
-  getProfile,
-  buildScopedUrl,
-  waitForSessionUser,
-  restorePendingSessionUser,
-  getCurrentSessionScope,
-  readScopedSessionMeta,
-  clearScopedSessionMeta
-} from './auth.js?v=2026-04-23-1';
+import { supabase, initPage, getSessionUser, getProfile, buildScopedUrl, waitForSessionUser, restorePendingSessionUser } from './auth.js?v=2026-04-26-1';
 
 await initPage('dashboard');
 
 const MAX_BYTES = 8 * 1024 * 1024;
+const MAX_TEAM_IMAGE_BYTES = 4 * 1024 * 1024;
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const TROLL_IMAGE_CAPTION = 'schabbatt schalom';
 const TEST_ACCOUNT_SCOPE = 'test-account';
-const TEST_ACCOUNT_SCOPE_PREFIX = 'test-account-';
 const TEST_HANDOFF_PREFIX = 'ragebaiters:test-handoff:';
-const TEST_ACCOUNT_LIFETIME_MS = 5 * 60 * 1000;
+const TEST_HANDOFF_TTL_MS = 2 * 60 * 1000;
+const TEAM_IMAGE_PLACEHOLDER = 'images/logo.png';
 const BANNER_OPTIONS = {
   sponsor: { src: 'images/banner.png', label: 'Sponsor' },
   team: { src: 'images/banner2.png', label: 'Team' }
@@ -33,7 +22,6 @@ const roleBadge = document.getElementById('roleBadge');
 const memberNote = document.getElementById('memberNote');
 const tabButtons = [...document.querySelectorAll('.dashboard-tab')];
 const viewSections = [...document.querySelectorAll('.dashboard-view')];
-const quickButtons = [...document.querySelectorAll('.dash-quick-btn[href^="#"]')];
 const adminOnlyNodes = [...document.querySelectorAll('.role-admin-only, .role-admin-view')];
 const memberUpNodes = [...document.querySelectorAll('.role-member-up, .role-member-up-view')];
 const welcomeIntro = document.getElementById('welcomeIntro');
@@ -66,19 +54,6 @@ const bannerRadios = [...document.querySelectorAll('input[name="homepageBanner"]
 const bannerPreview = document.getElementById('bannerPreview');
 const saveBannerBtn = document.getElementById('saveBannerBtn');
 const bannerMessage = document.getElementById('bannerMessage');
-const instagramPostUrlInput = document.getElementById('instagramPostUrlInput');
-const instagramImageUrlInput = document.getElementById('instagramImageUrlInput');
-const instagramTitleInput = document.getElementById('instagramTitleInput');
-const instagramUsernameInput = document.getElementById('instagramUsernameInput');
-const instagramPostedAtInput = document.getElementById('instagramPostedAtInput');
-const instagramCaptionInput = document.getElementById('instagramCaptionInput');
-const saveInstagramBtn = document.getElementById('saveInstagramBtn');
-const instagramPreview = document.getElementById('instagramPreview');
-const instagramMessage = document.getElementById('instagramMessage');
-const teamMembersEditor = document.getElementById('teamMembersEditor');
-const addTeamMemberBtn = document.getElementById('addTeamMemberBtn');
-const saveTeamMembersBtn = document.getElementById('saveTeamMembersBtn');
-const teamMembersMessage = document.getElementById('teamMembersMessage');
 
 const refreshUsersBtn = document.getElementById('refreshUsersBtn');
 const usersTitle = document.getElementById('usersTitle');
@@ -93,13 +68,8 @@ const state = {
   role: 'observer',
   isAdmin: false,
   canUpload: false,
-  canViewUsers: false,
-  teamMembers: [],
-  userDirectory: []
+  canViewUsers: false
 };
-const currentSessionScope = getCurrentSessionScope();
-const isTemporaryTestSession = currentSessionScope === TEST_ACCOUNT_SCOPE
-  || currentSessionScope.startsWith(TEST_ACCOUNT_SCOPE_PREFIX);
 
 state.user = await waitForSessionUser();
 if (!state.user) {
@@ -146,21 +116,17 @@ setupNavigation();
 if (state.canUpload) setupUploads();
 if (state.canViewUsers) refreshUsersBtn.addEventListener('click', () => loadUsers());
 setupAdminActions();
-setupTestAccountLifecycle();
-setupTeamMembersEditorActions();
 
 loadingSection.hidden = true;
 mainSection.hidden = false;
 
 if (state.canUpload) await loadMyPhotos();
 if (state.canViewUsers) await loadUsers();
-await loadTeamMembers();
 if (state.isAdmin) {
   await Promise.all([
     loadPendingReviews(),
     loadInvites(),
-    loadBannerSetting(),
-    loadInstagramSettings()
+    loadBannerSetting()
   ]);
 }
 
@@ -180,12 +146,8 @@ function setupNavigation() {
   });
 }
 
-function setupTeamMembersEditorActions() {
-  addTeamMemberBtn?.addEventListener('click', () => addTeamMember());
-}
-
 function normalizeView(view) {
-  const allowed = ['welcome', 'team'];
+  const allowed = ['welcome'];
   if (state.canUpload) allowed.push('uploads');
   if (state.canViewUsers) allowed.push('users');
   if (state.isAdmin) allowed.push('invites', 'banner');
@@ -206,15 +168,6 @@ function setActiveView(view) {
   if (location.hash !== `#${safeView}`) {
     history.replaceState(null, '', `#${safeView}`);
   }
-  syncQuickButtons(safeView);
-}
-
-function syncQuickButtons(activeView) {
-  if (!quickButtons.length) return;
-  quickButtons.forEach(link => {
-    const hash = String(link.getAttribute('href') || '').replace('#', '');
-    link.classList.toggle('is-active', hash === activeView);
-  });
 }
 
 function setupUploads() {
@@ -273,18 +226,6 @@ function setupAdminActions() {
   });
 
   saveBannerBtn.addEventListener('click', () => saveBannerSetting());
-  saveInstagramBtn.addEventListener('click', () => saveInstagramSettings());
-
-  [
-    instagramPostUrlInput,
-    instagramImageUrlInput,
-    instagramTitleInput,
-    instagramUsernameInput,
-    instagramPostedAtInput,
-    instagramCaptionInput
-  ].forEach(field => {
-    field?.addEventListener('input', () => updateInstagramPreview());
-  });
 }
 
 async function openTestAccountSession() {
@@ -301,22 +242,18 @@ async function openTestAccountSession() {
     }
 
     clearExpiredTestAccountHandoffs();
-    const sessionScope = String(access.session_scope || TEST_ACCOUNT_SCOPE).trim() || TEST_ACCOUNT_SCOPE;
-    const expiresAt = access.expires_at
-      ? new Date(access.expires_at).getTime()
-      : Date.now() + TEST_ACCOUNT_LIFETIME_MS;
 
     const handoffId = createTestAccountHandoffId();
     localStorage.setItem(`${TEST_HANDOFF_PREFIX}${handoffId}`, JSON.stringify({
-      sessionScope,
+      sessionScope: TEST_ACCOUNT_SCOPE,
       email: access.email,
       password: access.password,
       username: access.username,
       role: access.role,
-      expiresAt
+      expiresAt: Date.now() + TEST_HANDOFF_TTL_MS
     }));
 
-    const targetUrl = buildScopedUrl('dashboard.html', sessionScope, { handoff: handoffId });
+    const targetUrl = buildScopedUrl('dashboard.html', TEST_ACCOUNT_SCOPE, { handoff: handoffId });
     if (pendingTab && !pendingTab.closed) {
       pendingTab.location = targetUrl;
     } else {
@@ -325,7 +262,7 @@ async function openTestAccountSession() {
 
     setMessage(
       testAccountMessage,
-      'Testaccount im neuen Tab geoeffnet. Er wird nach 5 Minuten automatisch ersetzt, dein Admin-Login bleibt hier aktiv.',
+      'Testaccount im neuen Tab geöffnet. Dein Admin-Login bleibt im aktuellen Tab aktiv.',
       'success'
     );
   } catch (error) {
@@ -333,73 +270,17 @@ async function openTestAccountSession() {
     const message = mapTestAccountError(error);
     setMessage(
       testAccountMessage,
-      `Testaccount konnte nicht geoeffnet werden: ${message}`,
+      `Testaccount konnte nicht geöffnet werden: ${message}`,
       'error'
     );
   }
 }
 
-function setupTestAccountLifecycle() {
-  if (!isTemporaryTestSession) return;
-
-  const meta = readScopedSessionMeta(currentSessionScope);
-  const expiresAt = Number(meta?.expiresAt || 0);
-  if (!expiresAt) return;
-
-  const rotateInMs = Math.max(0, expiresAt - Date.now());
-  window.setTimeout(() => {
-    rotateTestAccountSession();
-  }, rotateInMs);
-}
-
-async function rotateTestAccountSession() {
-  if (!isTemporaryTestSession) return;
-
-  try {
-    clearScopedSessionMeta(currentSessionScope);
-
-    const { data, error } = await defaultSupabase.rpc('admin_rotate_test_account_access', {
-      p_previous_session_scope: currentSessionScope
-    });
-    if (error) throw error;
-
-    const access = Array.isArray(data) ? data[0] : data;
-    if (!access?.email || !access?.password) {
-      throw new Error('Neuer Testaccount konnte nicht erstellt werden.');
-    }
-
-    clearExpiredTestAccountHandoffs();
-
-    const handoffId = createTestAccountHandoffId();
-    const nextScope = String(access.session_scope || TEST_ACCOUNT_SCOPE).trim() || TEST_ACCOUNT_SCOPE;
-    const expiresAt = access.expires_at
-      ? new Date(access.expires_at).getTime()
-      : Date.now() + TEST_ACCOUNT_LIFETIME_MS;
-
-    localStorage.setItem(`${TEST_HANDOFF_PREFIX}${handoffId}`, JSON.stringify({
-      sessionScope: nextScope,
-      email: access.email,
-      password: access.password,
-      username: access.username,
-      role: access.role,
-      expiresAt
-    }));
-
-    await supabase.auth.signOut();
-    location.replace(buildScopedUrl('dashboard.html', nextScope, { handoff: handoffId }));
-  } catch (error) {
-    console.error('[Ragebaiters] Testaccount-Rotation fehlgeschlagen:', error);
-    await supabase.auth.signOut().catch(() => {});
-    alert(`Testaccount konnte nicht automatisch erneuert werden: ${mapTestAccountError(error)}`);
-    location.replace(buildScopedUrl('login.html', ''));
-  }
-}
-
 function setupWelcome() {
   const introByRole = {
-    observer: 'Du bist als Beobachter eingeloggt. Du kannst Bilder hochladen, diese muessen aber erst von einem Admin freigegeben werden.',
+    observer: 'Du bist als Beobachter eingeloggt. Du kannst Bilder hochladen, diese müssen aber erst von einem Admin freigegeben werden.',
     member: 'Du bist als Mitglied eingeloggt. Du kannst Bilder hochladen und die Mitgliederliste ansehen.',
-    admin: 'Du bist als Admin eingeloggt. Alle Bereiche des Dashboards stehen dir vollstaendig zur Verfuegung.'
+    admin: 'Du bist als Admin eingeloggt. Alle Bereiche des Dashboards stehen dir vollständig zur Verfügung.'
   };
 
   welcomeIntro.textContent = introByRole[state.role] || introByRole.observer;
@@ -410,22 +291,22 @@ function setupWelcome() {
       'Uploads',
       state.canUpload ? 'Freigeschaltet' : 'Gesperrt',
       state.role === 'observer'
-        ? 'Bilder hochladen. Ein Admin muss sie freigeben, bevor sie oeffentlich erscheinen.'
+        ? 'Bilder hochladen. Ein Admin muss sie freigeben, bevor sie öffentlich erscheinen.'
         : state.canUpload
           ? 'Bilder hochladen und eigene Uploads verwalten.'
-          : 'Nur fuer Mitglieder, Beobachter und Admins freigeschaltet.'
+          : 'Nur für Mitglieder, Beobachter und Admins freigeschaltet.'
     ),
     capabilityCard(
       'Mitglieder',
       state.canViewUsers ? 'Freigeschaltet' : 'Gesperrt',
       state.canViewUsers
         ? (state.isAdmin ? 'Alle Benutzer sehen und verwalten.' : 'Mitgliederliste in reiner Lesesicht.')
-        : 'Nur fuer Mitglieder und Admins freigeschaltet.'
+        : 'Nur für Mitglieder und Admins freigeschaltet.'
     ),
     capabilityCard(
       'Admin-Funktionen',
       state.isAdmin ? 'Freigeschaltet' : 'Gesperrt',
-      state.isAdmin ? 'Einladungscodes, Banner und Benutzerverwaltung komplett verfuegbar.' : 'Nur fuer Admins sichtbar.'
+      state.isAdmin ? 'Einladungscodes, Banner und Benutzerverwaltung komplett verfügbar.' : 'Nur für Admins sichtbar.'
     )
   ];
 
@@ -435,12 +316,12 @@ function setupWelcome() {
 function setupUserSectionCopy() {
   if (state.isAdmin) {
     usersTitle.textContent = 'Benutzerverwaltung';
-    usersIntro.textContent = 'Alle Benutzer ansehen, Rollen anpassen, Benutzernamen aendern und Accounts loeschen.';
+    usersIntro.textContent = 'Alle Benutzer ansehen, Rollen anpassen, Teamdaten pflegen und Accounts löschen.';
     return;
   }
 
   usersTitle.textContent = 'Mitglieder';
-  usersIntro.textContent = 'Hier kannst du alle Benutzer der Website ansehen. Bearbeiten ist fuer Mitglieder nicht moeglich.';
+  usersIntro.textContent = 'Hier kannst du alle Benutzer der Website ansehen. Bearbeiten ist für Mitglieder nicht möglich.';
 }
 
 function handleUploadFiles(files) {
@@ -461,7 +342,7 @@ async function uploadOne(file, caption) {
   const status = row.querySelector('.upload-row-status');
 
   if (!ALLOWED_MIME.includes(file.type)) return failUpload(row, status, 'Dateityp nicht erlaubt');
-  if (file.size > MAX_BYTES) return failUpload(row, status, 'Datei zu gross (max. 8 MB)');
+  if (file.size > MAX_BYTES) return failUpload(row, status, 'Datei zu groß (max. 8 MB)');
 
   bar.style.width = '30%';
   status.textContent = '30 %';
@@ -481,16 +362,20 @@ async function uploadOne(file, caption) {
   bar.style.width = '70%';
   status.textContent = '70 %';
 
-  const { error: dbError } = await supabase.rpc('create_photo_upload', {
+  const { error: dbError } = await createPhotoUploadRecord({
     p_storage_path: key,
     p_title: title,
     p_caption: finalCaption,
     p_size_bytes: file.size,
     p_width: dims.width,
-    p_height: dims.height
+    p_height: dims.height,
+    p_mime: file.type
   });
 
-  if (dbError) return failUpload(row, status, dbError.message);
+  if (dbError) {
+    await removePhotoFromStorage(key);
+    return failUpload(row, status, mapUploadError(dbError));
+  }
 
   bar.style.width = '100%';
   status.textContent = 'fertig';
@@ -535,7 +420,7 @@ async function loadMyPhotos() {
     fig.className = 'photo-item';
 
     const actions = state.isAdmin
-      ? `<button class="btn-delete" type="button" data-id="${photo.id}" data-path="${encodeURIComponent(photo.storage_path)}" title="Loeschen">x</button>`
+      ? `<button class="btn-delete" type="button" data-id="${photo.id}" data-path="${encodeURIComponent(photo.storage_path)}" title="Löschen">x</button>`
       : '';
 
     fig.innerHTML = `
@@ -556,7 +441,7 @@ async function loadMyPhotos() {
 
   grid.querySelectorAll('.btn-delete').forEach(btn => {
     btn.addEventListener('click', async () => {
-      if (!confirm('Dieses Foto wirklich loeschen?')) return;
+      if (!confirm('Dieses Foto wirklich löschen?')) return;
 
       const id = Number(btn.dataset.id);
       const path = decodeURIComponent(btn.dataset.path);
@@ -573,7 +458,7 @@ async function loadMyPhotos() {
       });
 
       if (dbError) return alert(dbError.message);
-      if (!deleted) return alert('Foto konnte nicht geloescht werden.');
+      if (!deleted) return alert('Foto konnte nicht gelöscht werden.');
 
       loadMyPhotos();
       if (state.isAdmin) loadPendingReviews();
@@ -584,7 +469,7 @@ async function loadMyPhotos() {
 async function loadPendingReviews() {
   if (!state.isAdmin || !pendingReviews) return;
 
-  pendingReviews.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Pruefe Uploads...</div>';
+  pendingReviews.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Prüfe Uploads...</div>';
 
   const { data, error } = await supabase
     .from('photos')
@@ -637,7 +522,7 @@ async function loadPendingReviews() {
         <div class="table-actions">
           <button class="btn-tertiary" type="button" data-action="approve" data-id="${photo.id}">Freigeben</button>
           <button class="btn-danger" type="button" data-action="troll" data-id="${photo.id}">Troll</button>
-          <button class="btn-danger" type="button" data-action="delete-review" data-id="${photo.id}" data-path="${encodeURIComponent(photo.storage_path)}">Loeschen</button>
+          <button class="btn-danger" type="button" data-action="delete-review" data-id="${photo.id}" data-path="${encodeURIComponent(photo.storage_path)}">Löschen</button>
         </div>
       </figcaption>`;
     grid.appendChild(fig);
@@ -671,7 +556,7 @@ async function loadPendingReviews() {
     btn.addEventListener('click', async () => {
       const photoId = Number(btn.dataset.id);
       const photoPath = decodeURIComponent(btn.dataset.path || '');
-      if (!confirm('Diesen Upload wirklich loeschen?')) return;
+      if (!confirm('Diesen Upload wirklich löschen?')) return;
 
       if (photoPath && !isLocalPhotoPath(photoPath)) {
         const { error: storageError } = await supabase.storage.from('photos').remove([photoPath]);
@@ -685,7 +570,7 @@ async function loadPendingReviews() {
       });
 
       if (deleteError) return alert(deleteError.message);
-      if (!deleted) return alert('Upload konnte nicht geloescht werden.');
+      if (!deleted) return alert('Upload konnte nicht gelöscht werden.');
 
       await Promise.all([loadPendingReviews(), loadMyPhotos()]);
     });
@@ -759,7 +644,7 @@ async function loadInvites() {
       <td>
         <div class="table-actions">
           <button type="button" class="btn-tertiary" data-action="copy" data-code="${escapeHtmlAttr(invite.code)}">Kopieren</button>
-          <button type="button" class="btn-danger" data-action="delete-invite" data-code="${escapeHtmlAttr(invite.code)}">Loeschen</button>
+          <button type="button" class="btn-danger" data-action="delete-invite" data-code="${escapeHtmlAttr(invite.code)}">Löschen</button>
         </div>
       </td>
     </tr>`).join('');
@@ -779,16 +664,16 @@ async function loadInvites() {
   inviteRows.querySelectorAll('[data-action="delete-invite"]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const code = btn.dataset.code;
-      if (!confirm(`Einladungscode ${code} wirklich loeschen?`)) return;
+      if (!confirm(`Einladungscode ${code} wirklich löschen?`)) return;
 
       const { error: deleteError } = await supabase.rpc('admin_delete_invite', { p_code: code });
 
       if (deleteError) {
-        setMessage(inviteMessage, `Code konnte nicht geloescht werden: ${deleteError.message}`, 'error');
+        setMessage(inviteMessage, `Code konnte nicht gelöscht werden: ${deleteError.message}`, 'error');
         return;
       }
 
-      setMessage(inviteMessage, `Code geloescht: ${code}`, 'success');
+      setMessage(inviteMessage, `Code gelöscht: ${code}`, 'success');
       await loadInvites();
     });
   });
@@ -828,576 +713,6 @@ function updateBannerPreview(variant) {
   bannerPreview.alt = `${config.label} Banner Vorschau`;
 }
 
-async function loadInstagramSettings() {
-  const { data, error } = await supabase.rpc('get_homepage_instagram_post');
-
-  if (error) {
-    setMessage(instagramMessage, `Instagram-Einstellung konnte nicht geladen werden: ${error.message}`, 'error');
-    updateInstagramPreview();
-    return;
-  }
-
-  const post = Array.isArray(data) ? data[0] : data;
-  instagramPostUrlInput.value = String(post?.post_url || '');
-  instagramImageUrlInput.value = String(post?.image_url || '');
-  instagramTitleInput.value = String(post?.title || '');
-  instagramUsernameInput.value = String(post?.username || 'die_ragebaiters');
-  instagramCaptionInput.value = String(post?.caption || '');
-  instagramPostedAtInput.value = toDateTimeLocalValue(post?.posted_at);
-
-  updateInstagramPreview();
-  setMessage(instagramMessage, '', 'info', true);
-}
-
-async function saveInstagramSettings() {
-  const payload = collectInstagramFormValues();
-
-  if (!payload.postUrl) {
-    setMessage(instagramMessage, 'Bitte mindestens den Instagram-Link eintragen.', 'error');
-    return;
-  }
-
-  if (payload.postUrl && !isProbablyUrl(payload.postUrl)) {
-    setMessage(instagramMessage, 'Bitte einen gueltigen Instagram-Link eintragen.', 'error');
-    return;
-  }
-
-  if (payload.imageUrl && !isProbablyUrl(payload.imageUrl)) {
-    setMessage(instagramMessage, 'Bitte eine gueltige direkte Bild- oder Cover-URL eintragen.', 'error');
-    return;
-  }
-
-  const { error } = await supabase.rpc('admin_set_homepage_instagram_post', {
-    p_post_url: payload.postUrl,
-    p_image_url: payload.imageUrl,
-    p_title: payload.title,
-    p_caption: payload.caption,
-    p_posted_at: payload.postedAt || null,
-    p_username: payload.username || 'die_ragebaiters'
-  });
-
-  if (error) {
-    setMessage(instagramMessage, `Instagram-Beitrag konnte nicht gespeichert werden: ${error.message}`, 'error');
-    return;
-  }
-
-  updateInstagramPreview();
-  setMessage(instagramMessage, 'Instagram-Beitrag fuer die Startseite gespeichert.', 'success');
-}
-
-async function loadTeamMembers() {
-  const { data, error } = await supabase.rpc('get_team_members');
-
-  if (error) {
-    state.teamMembers = defaultTeamMembers();
-    renderTeamMembersEditor();
-    setMessage(teamMembersMessage, `Team-Daten konnten nicht geladen werden: ${error.message}`, 'error');
-    return;
-  }
-
-  state.teamMembers = normalizeTeamMembers(data);
-  renderTeamMembersEditor();
-  setMessage(teamMembersMessage, '', 'info', true);
-}
-
-async function saveTeamMembers() {
-  if (!state.isAdmin) {
-    setMessage(teamMembersMessage, 'Nur Admins koennen Team-Kacheln speichern.', 'error');
-    return;
-  }
-
-  const payload = normalizeTeamMembers(state.teamMembers);
-
-  if (!payload.length) {
-    setMessage(teamMembersMessage, 'Bitte mindestens ein Team-Mitglied hinterlegen.', 'error');
-    return;
-  }
-
-  const { error } = await supabase.rpc('admin_set_team_members', { p_members: payload });
-  if (error) {
-    setMessage(teamMembersMessage, `Team konnte nicht gespeichert werden: ${error.message}`, 'error');
-    return;
-  }
-
-  state.teamMembers = payload;
-  renderTeamMembersEditor();
-  setMessage(teamMembersMessage, 'Team-Daten gespeichert.', 'success');
-}
-
-function addTeamMember() {
-  if (!state.isAdmin) {
-    setMessage(teamMembersMessage, 'Nur Admins koennen neue Team-Kacheln anlegen.', 'error');
-    return;
-  }
-
-  const nowId = generateTeamMemberId();
-  const members = normalizeTeamMembers(state.teamMembers);
-  const maxSort = members.reduce((acc, entry) => Math.max(acc, Number(entry.sort_order) || 0), 0);
-  const nextSort = Math.min(999, Math.max(1, maxSort + 10));
-
-  state.teamMembers = [
-    ...members,
-    {
-      id: nowId,
-      name: '',
-      role: '',
-      description: '',
-      image_url: '',
-      is_leader: false,
-      sort_order: nextSort
-    }
-  ];
-
-  renderTeamMembersEditor();
-  setMessage(teamMembersMessage, 'Neue Kachel hinzugefuegt. Bitte noch "Team speichern" klicken.', 'info');
-
-  requestAnimationFrame(() => {
-    const node = teamMembersEditor?.querySelector(`[data-member-id="${cssEscape(nowId)}"] [data-field="name"]`);
-    node?.focus?.();
-  });
-}
-
-function renderTeamMembersEditor() {
-  if (!teamMembersEditor) return;
-
-  const members = normalizeTeamMembers(state.teamMembers);
-  state.teamMembers = members;
-  const isReadOnly = !state.isAdmin;
-
-  if (!members.length) {
-    teamMembersEditor.innerHTML = '<div class="table-empty">Noch keine Team-Mitglieder hinterlegt.</div>';
-    return;
-  }
-
-  teamMembersEditor.innerHTML = members.map(member => `
-    <article class="team-editor-card ${member.is_leader ? 'is-leader' : ''}" data-member-id="${escapeHtmlAttr(member.id)}">
-      <div class="team-editor-head">
-        <div class="team-editor-identity">
-          <img class="team-editor-avatar" src="${escapeHtmlAttr(resolveTeamMemberImage(member.image_url))}" alt="" onerror="this.src='images/logo.png'">
-          <div class="team-editor-title">
-            <strong title="${escapeHtmlAttr(member.name || 'Unbenanntes Mitglied')}">${escapeHtml(member.name || 'Unbenanntes Mitglied')}</strong>
-            <div class="team-editor-sub">ID: ${escapeHtml(member.id)} &middot; Sortierung: ${escapeHtml(String(member.sort_order))}</div>
-          </div>
-        </div>
-
-        <div class="team-editor-actions">
-          ${isReadOnly ? '' : `
-            <button type="button" class="btn-tertiary" data-action="move-up" title="Nach oben">↑</button>
-            <button type="button" class="btn-tertiary" data-action="move-down" title="Nach unten">↓</button>
-            <button type="button" class="btn-secondary" data-action="choose-team-image">Bild auswaehlen</button>
-            <input class="team-editor-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-action="team-image-file">
-          `}
-        </div>
-
-        <div class="team-editor-badges" aria-label="Metadaten">
-          <span class="team-editor-badge ${member.is_leader ? 'is-leader' : ''}">${member.is_leader ? 'Teamfuehrung' : 'Operator'}</span>
-          <span class="team-editor-badge">${member.image_url ? 'Bild gesetzt' : 'Kein Bild'}</span>
-        </div>
-      </div>
-
-      <div class="team-editor-layout">
-        <div class="team-editor-media">
-          <img class="team-editor-image" src="${escapeHtmlAttr(resolveTeamMemberImage(member.image_url))}" alt="${escapeHtmlAttr(member.name || 'Teammitglied')}" data-preview-image onerror="this.src='images/logo.png'">
-          <div class="team-editor-note">Tipp: quadratisches Bild (JPG/PNG/WebP/GIF), max. 8 MB.</div>
-        </div>
-
-        <div class="team-editor-meta">
-          <div class="form-row form-row-two">
-            <label class="field">
-              <span>Name</span>
-              <input type="text" value="${escapeHtmlAttr(member.name)}" data-field="name" maxlength="120" placeholder="z.B. Max Mustermann" ${isReadOnly ? 'disabled' : ''}>
-            </label>
-            <label class="field">
-              <span>Rolle</span>
-              <input type="text" value="${escapeHtmlAttr(member.role)}" data-field="role" maxlength="80" placeholder="z.B. Medic / Support" ${isReadOnly ? 'disabled' : ''}>
-            </label>
-          </div>
-
-          <label class="team-editor-toggle">
-            <input type="checkbox" data-field="is_leader" ${member.is_leader ? 'checked' : ''} ${isReadOnly ? 'disabled' : ''}>
-            <span>Zur Teamfuehrung zaehlen</span>
-          </label>
-
-          <label class="field">
-            <span>Beschreibung</span>
-            <textarea class="upload-caption-input" maxlength="500" data-field="description" placeholder="Beschreibung fuer die Team-Seite." ${isReadOnly ? 'disabled' : ''}>${escapeHtml(member.description)}</textarea>
-          </label>
-
-          <details class="team-editor-advanced">
-            <summary>Erweitert</summary>
-            <div class="form-row form-row-two team-editor-advanced-body">
-              <label class="field">
-                <span>Bild-URL (optional)</span>
-                <input type="text" value="${escapeHtmlAttr(member.image_url)}" data-field="image_url" maxlength="500" placeholder="https://... oder leer lassen" ${isReadOnly ? 'disabled' : ''}>
-              </label>
-              <label class="field">
-                <span>Sortierung</span>
-                <input type="number" value="${escapeHtmlAttr(member.sort_order)}" data-field="sort_order" min="1" max="999" ${isReadOnly ? 'disabled' : ''}>
-              </label>
-            </div>
-          </details>
-
-          ${isReadOnly ? `
-            <div class="team-editor-note">Nur Admins koennen Team-Kacheln bearbeiten.</div>
-          ` : `
-            <div class="team-editor-danger">
-              <p>Entfernt die Kachel aus dem Team. Danach unbedingt auf <strong>Team speichern</strong> klicken.</p>
-              <button type="button" class="btn-danger" data-action="delete-team-member">Kachel loeschen</button>
-            </div>
-          `}
-        </div>
-      </div>
-    </article>`).join('');
-
-  teamMembersEditor.querySelectorAll('[data-field]').forEach(field => {
-    const eventName = field.type === 'checkbox' || field.dataset.field === 'sort_order' ? 'change' : 'input';
-    field.addEventListener(eventName, () => {
-      const card = field.closest('[data-member-id]');
-      updateTeamMemberField(
-        card?.dataset.memberId,
-        field.dataset.field,
-        field.type === 'checkbox' ? field.checked : field.value,
-        field
-      );
-    });
-  });
-
-  teamMembersEditor.querySelectorAll('[data-action="choose-team-image"]').forEach(button => {
-    button.addEventListener('click', () => {
-      const card = button.closest('[data-member-id]');
-      card?.querySelector('[data-action="team-image-file"]')?.click();
-    });
-  });
-
-  teamMembersEditor.querySelectorAll('[data-action="team-image-file"]').forEach(input => {
-    input.addEventListener('change', async () => {
-      const file = input.files?.[0];
-      input.value = '';
-      if (!file) return;
-
-      const card = input.closest('[data-member-id]');
-      await uploadTeamMemberImage(card?.dataset.memberId, file);
-    });
-  });
-
-  teamMembersEditor.querySelectorAll('[data-action="delete-team-member"]').forEach(button => {
-    button.addEventListener('click', async () => {
-      const card = button.closest('[data-member-id]');
-      await deleteTeamMember(card?.dataset.memberId);
-    });
-  });
-
-  teamMembersEditor.querySelectorAll('[data-action="move-up"]').forEach(button => {
-    button.addEventListener('click', () => {
-      const card = button.closest('[data-member-id]');
-      moveTeamMember(card?.dataset.memberId, -1);
-    });
-  });
-
-  teamMembersEditor.querySelectorAll('[data-action="move-down"]').forEach(button => {
-    button.addEventListener('click', () => {
-      const card = button.closest('[data-member-id]');
-      moveTeamMember(card?.dataset.memberId, 1);
-    });
-  });
-}
-
-function moveTeamMember(memberId, direction) {
-  if (!state.isAdmin) return;
-  if (!memberId || !direction) return;
-  const members = normalizeTeamMembers(state.teamMembers);
-  const index = members.findIndex(entry => entry.id === memberId);
-  if (index < 0) return;
-
-  const member = members[index];
-  const step = direction < 0 ? -1 : 1;
-  let otherIndex = index + step;
-  while (otherIndex >= 0 && otherIndex < members.length) {
-    if (members[otherIndex].is_leader === member.is_leader) break;
-    otherIndex += step;
-  }
-  if (otherIndex < 0 || otherIndex >= members.length) return;
-
-  const other = members[otherIndex];
-  const next = members.map(entry => {
-    if (entry.id === member.id) return { ...entry, sort_order: other.sort_order };
-    if (entry.id === other.id) return { ...entry, sort_order: member.sort_order };
-    return entry;
-  });
-
-  state.teamMembers = next;
-  renderTeamMembersEditor();
-  setMessage(teamMembersMessage, 'Reihenfolge angepasst. Bitte noch "Team speichern" klicken.', 'info');
-}
-
-async function deleteTeamMember(memberId) {
-  if (!state.isAdmin) return;
-  if (!memberId) return;
-
-  const member = state.teamMembers.find(entry => entry.id === memberId);
-  const label = member?.name ? `"${member.name}"` : memberId;
-  if (!confirm(`Teammitglied ${label} wirklich loeschen?`)) return;
-
-  const previousPath = resolveStoragePathFromPublicUrl(member?.image_url || '');
-  if (previousPath?.startsWith('team-members/')) {
-    await supabase.storage.from('photos').remove([previousPath]).catch(() => {});
-  }
-
-  state.teamMembers = normalizeTeamMembers(state.teamMembers).filter(entry => entry.id !== memberId);
-  renderTeamMembersEditor();
-  setMessage(teamMembersMessage, 'Kachel geloescht. Bitte noch "Team speichern" klicken.', 'success');
-}
-
-function generateTeamMemberId() {
-  const rand = Math.random().toString(16).slice(2, 8);
-  return `member-${Date.now().toString(16)}-${rand}`.slice(0, 40);
-}
-
-function updateTeamMemberField(memberId, field, value, inputNode = null) {
-  if (!memberId || !field) return;
-
-  state.teamMembers = state.teamMembers.map(member => {
-    if (member.id !== memberId) return member;
-
-    return {
-      ...member,
-      [field]: field === 'is_leader'
-        ? Boolean(value)
-        : field === 'sort_order'
-          ? Number(value || member.sort_order || 0)
-          : String(value ?? '')
-    };
-  });
-
-  if (field === 'image_url' && inputNode) {
-    const card = inputNode.closest('[data-member-id]');
-    const preview = card?.querySelector('[data-preview-image]');
-    if (preview) preview.src = resolveTeamMemberImage(String(value || '').trim());
-  }
-
-  if (field === 'is_leader' || field === 'sort_order') {
-    renderTeamMembersEditor();
-  }
-}
-
-async function uploadTeamMemberImage(memberId, file) {
-  if (!memberId || !file) return;
-
-  if (!ALLOWED_MIME.includes(file.type)) {
-    setMessage(teamMembersMessage, 'Dateityp fuer Team-Bilder nicht erlaubt.', 'error');
-    return;
-  }
-
-  if (file.size > MAX_BYTES) {
-    setMessage(teamMembersMessage, 'Team-Bild ist zu gross (max. 8 MB).', 'error');
-    return;
-  }
-
-  const member = state.teamMembers.find(entry => entry.id === memberId);
-  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-  const key = `team-members/${slugify(member?.name || memberId)}-${Date.now()}.${ext}`;
-
-  const { error: uploadError } = await supabase.storage
-    .from('photos')
-    .upload(key, file, { cacheControl: '3600', contentType: file.type, upsert: true });
-
-  if (uploadError) {
-    setMessage(teamMembersMessage, `Team-Bild konnte nicht hochgeladen werden: ${uploadError.message}`, 'error');
-    return;
-  }
-
-  const previousPath = resolveStoragePathFromPublicUrl(member?.image_url || '');
-  if (previousPath?.startsWith('team-members/') && previousPath !== key) {
-    await supabase.storage.from('photos').remove([previousPath]).catch(() => {});
-  }
-
-  const { data: publicData } = supabase.storage.from('photos').getPublicUrl(key);
-  updateTeamMemberField(memberId, 'image_url', publicData.publicUrl);
-  renderTeamMembersEditor();
-  setMessage(teamMembersMessage, 'Team-Bild hochgeladen. Bitte noch auf "Team speichern" klicken.', 'success');
-}
-
-function normalizeTeamMembers(rawMembers) {
-  const source = Array.isArray(rawMembers) ? rawMembers : Array.isArray(rawMembers?.data) ? rawMembers.data : defaultTeamMembers();
-
-  return source
-    .map((member, index) => ({
-      id: String(member?.id || `member-${index + 1}`).trim() || `member-${index + 1}`,
-      name: String(member?.name || '').trim(),
-      role: String(member?.role || '').trim(),
-      description: String(member?.description || member?.desc || '').trim(),
-      image_url: String(member?.image_url || member?.img || '').trim(),
-      is_leader: Boolean(member?.is_leader),
-      sort_order: Number(member?.sort_order || (index + 1) * 10) || (index + 1) * 10
-    }))
-    .sort((a, b) => {
-      if (Number(a.is_leader) !== Number(b.is_leader)) {
-        return Number(b.is_leader) - Number(a.is_leader);
-      }
-      return a.sort_order - b.sort_order;
-    });
-}
-
-function defaultTeamMembers() {
-  return [
-    { id: 'ben', name: 'Yotzek (Ben)', role: 'Teamfuehrer', description: 'Ben koordiniert die Truppe und bewahrt selbst im Gefecht einen kuehlen Kopf.', image_url: 'images/benf.png', is_leader: true, sort_order: 10 },
-    { id: 'jason', name: 'sneiper0 (Jason)', role: 'Sniper', description: 'Praezisionsschuetze der Ragebaiters.', image_url: 'images/logo.png', is_leader: false, sort_order: 20 },
-    { id: 'michael', name: 'MundMbrothers (Michael)', role: 'Medic', description: 'Sorgt fuer die Einsatzfaehigkeit des Teams.', image_url: 'images/michi2.png', is_leader: false, sort_order: 30 },
-    { id: 'nils', name: 'Disccave (Nils)', role: 'Breacher / OG', description: 'Einer der OGs. Experte fuer Improvisation.', image_url: 'images/nils.png', is_leader: false, sort_order: 40 },
-    { id: 'nathan', name: 'Nathan Goldstein (Nathan)', role: 'Support', description: 'Gibt Feuerschutz mit hohem Munitionsdurchsatz.', image_url: 'images/nathan.png', is_leader: false, sort_order: 50 },
-    { id: 'riccardo', name: 'Gemeral Richard (Riccardo)', role: 'Breacher', description: 'Spezialist fuer CQB.', image_url: 'images/riccardo.png', is_leader: false, sort_order: 60 },
-    { id: 'wolfgang', name: 'Wolfgang', role: 'Techniker', description: 'Haelt die Markierer am Laufen.', image_url: 'images/wolfgang.png', is_leader: false, sort_order: 70 }
-  ];
-}
-
-function resolveTeamMemberImage(path) {
-  return path || 'images/logo.png';
-}
-
-function resolveStoragePathFromPublicUrl(url) {
-  const normalized = String(url || '').trim();
-  if (!normalized || !window.SUPABASE_URL) return '';
-
-  try {
-    const publicPrefix = `${new URL(window.SUPABASE_URL).origin}/storage/v1/object/public/photos/`;
-    if (!normalized.startsWith(publicPrefix)) return '';
-    return decodeURIComponent(normalized.slice(publicPrefix.length));
-  } catch {
-    return '';
-  }
-}
-
-function slugify(value) {
-  return String(value || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 40) || 'team-member';
-}
-
-function updateInstagramPreview() {
-  if (!instagramPreview) return;
-
-  const payload = collectInstagramFormValues();
-  const hasPost = Boolean(payload.postUrl || payload.imageUrl || payload.title || payload.caption);
-
-  if (!hasPost) {
-    instagramPreview.innerHTML = buildInstagramPreviewPlaceholder();
-    return;
-  }
-
-  const isReel = /instagram\.com\/(reel|p)\//i.test(payload.postUrl) && /\/reel\//i.test(payload.postUrl);
-  const fallbackTitle = isReel ? 'Neuester Instagram-Reel' : 'Neuester Instagram-Beitrag';
-
-  const imageMarkup = payload.imageUrl
-    ? `<img class="instagram-post-image" src="${escapeHtmlAttr(payload.imageUrl)}" alt="${escapeHtmlAttr(payload.title || 'Instagram-Vorschau')}">`
-    : `
-      <div class="instagram-post-placeholder-inner">
-        <strong>${escapeHtml(payload.username || 'die_ragebaiters')}</strong>
-        <span>Cover-Bild fehlt noch</span>
-      </div>`;
-
-  const primaryAction = payload.postUrl
-    ? `<a href="${escapeHtmlAttr(payload.postUrl)}" target="_blank" rel="noopener">Beitrag ansehen</a>`
-    : `<span class="btn-secondary" style="pointer-events:none;">Link fehlt noch</span>`;
-
-  instagramPreview.innerHTML = `
-    <article class="card instagram-post-card">
-      <div class="instagram-post-grid">
-        <div class="instagram-post-image-wrap ${payload.imageUrl ? '' : 'instagram-post-placeholder'}">
-          ${imageMarkup}
-          <span class="instagram-post-badge">Instagram</span>
-        </div>
-        <div class="instagram-post-copy">
-          <span class="instagram-post-kicker">Vorschau</span>
-          <h3>${escapeHtml(payload.title || fallbackTitle)}</h3>
-          <p>${escapeHtml(payload.caption || 'Hier erscheint dein hinterlegter Instagram-Beitrag im Look der Startseite.')}</p>
-          <div class="instagram-post-meta">
-            <span>@${escapeHtml(payload.username || 'die_ragebaiters')}</span>
-            <span>${escapeHtml(formatInstagramPreviewDate(payload.postedAt))}</span>
-          </div>
-          <div class="instagram-post-actions">
-            ${primaryAction}
-            <a class="instagram-post-secondary" href="https://www.instagram.com/die_ragebaiters/" target="_blank" rel="noopener">Profil oeffnen</a>
-          </div>
-        </div>
-      </div>
-    </article>`;
-}
-
-function buildInstagramPreviewPlaceholder() {
-  return `
-    <article class="card instagram-post-card instagram-post-card-empty">
-      <div class="instagram-post-grid">
-        <div class="instagram-post-image-wrap instagram-post-placeholder">
-          <span class="instagram-post-badge">Instagram</span>
-          <div class="instagram-post-placeholder-inner">
-            <strong>die_ragebaiters</strong>
-            <span>Noch kein Beitrag eingetragen</span>
-          </div>
-        </div>
-        <div class="instagram-post-copy">
-          <span class="instagram-post-kicker">Vorschau</span>
-          <h3>Neuester Instagram-Beitrag</h3>
-          <p>Trage oben einen Link, ein Cover-Bild und optional Titel oder Text ein. Danach erscheint die Karte genauso auf der Startseite.</p>
-          <div class="instagram-post-meta">
-            <span>@die_ragebaiters</span>
-            <span>Wartet auf Eingabe</span>
-          </div>
-        </div>
-      </div>
-    </article>`;
-}
-
-function collectInstagramFormValues() {
-  return {
-    postUrl: String(instagramPostUrlInput?.value || '').trim(),
-    imageUrl: String(instagramImageUrlInput?.value || '').trim(),
-    title: String(instagramTitleInput?.value || '').trim(),
-    username: String(instagramUsernameInput?.value || '').trim(),
-    postedAt: String(instagramPostedAtInput?.value || '').trim(),
-    caption: String(instagramCaptionInput?.value || '').trim()
-  };
-}
-
-function toDateTimeLocalValue(value) {
-  if (!value) return '';
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-}
-
-function formatInstagramPreviewDate(value) {
-  if (!value) return 'Neuester Beitrag';
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Neuester Beitrag';
-
-  return date.toLocaleString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
-
-function isProbablyUrl(value) {
-  try {
-    const url = new URL(value);
-    return url.protocol === 'http:' || url.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
 async function loadUsers() {
   if (!state.canViewUsers) return;
 
@@ -1407,11 +722,13 @@ async function loadUsers() {
         <th>Benutzer</th>
         <th>E-Mail</th>
         <th>Rolle</th>
+        <th>Team</th>
+        <th>Teamfoto</th>
         <th>Erstellt</th>
         <th>Letzter Login</th>
         <th>Aktionen</th>
       </tr>`;
-    userRows.innerHTML = '<tr><td colspan="6" class="table-empty">Benutzer werden geladen...</td></tr>';
+    userRows.innerHTML = '<tr><td colspan="8" class="table-empty">Benutzer werden geladen...</td></tr>';
   } else {
     userTableHead.innerHTML = `
       <tr>
@@ -1426,16 +743,17 @@ async function loadUsers() {
   const { data, error } = await supabase.rpc(rpcName);
 
   if (error) {
-    const colspan = state.isAdmin ? 6 : 3;
+    const colspan = state.isAdmin ? 8 : 3;
     userRows.innerHTML = `<tr><td colspan="${colspan}" class="table-empty">Fehler: ${escapeHtml(error.message)}</td></tr>`;
     setMessage(userMessage, `Benutzer konnten nicht geladen werden: ${error.message}`, 'error');
     return;
   }
 
   const users = data || [];
+  const teamSettingsMap = state.isAdmin ? await loadTeamSettingsMap() : new Map();
 
   if (!users.length) {
-    const colspan = state.isAdmin ? 6 : 3;
+    const colspan = state.isAdmin ? 8 : 3;
     userRows.innerHTML = `<tr><td colspan="${colspan}" class="table-empty">Keine Benutzer gefunden.</td></tr>`;
     return;
   }
@@ -1451,6 +769,17 @@ async function loadUsers() {
     return;
   }
 
+  users.forEach(entry => {
+    const teamSettings = teamSettingsMap.get(entry.id) || {};
+    entry.show_on_team = Boolean(teamSettings.show_on_team);
+    entry.is_team_lead = Boolean(teamSettings.is_team_lead);
+    entry.team_role = teamSettings.team_role || '';
+    entry.team_image_url = teamSettings.team_image_url || '';
+    entry.team_sort_order = Number.isFinite(Number(teamSettings.team_sort_order))
+      ? Number(teamSettings.team_sort_order)
+      : 999;
+  });
+
   userRows.innerHTML = users.map(entry => `
     <tr data-user-id="${entry.id}">
       <td>
@@ -1464,42 +793,85 @@ async function loadUsers() {
         <label class="inline-field">
           <span>Rolle</span>
           <select data-field="role">
-            <option value="observer" ${entry.role === 'observer' ? 'selected' : ''}>observer</option>
-            <option value="member" ${entry.role === 'member' ? 'selected' : ''}>member</option>
-            <option value="admin" ${entry.role === 'admin' ? 'selected' : ''}>admin</option>
+            <option value="observer" ${entry.role === 'observer' ? 'selected' : ''}>Beobachter</option>
+            <option value="member" ${entry.role === 'member' ? 'selected' : ''}>Mitglied</option>
+            <option value="admin" ${entry.role === 'admin' ? 'selected' : ''}>Admin</option>
           </select>
         </label>
+      </td>
+      <td>
+        <div class="team-editor">
+          <label class="inline-check">
+            <input type="checkbox" data-field="show_on_team" ${entry.show_on_team ? 'checked' : ''}>
+            <span>Im Team anzeigen</span>
+          </label>
+          <label class="inline-check">
+            <input type="checkbox" data-field="is_team_lead" ${entry.is_team_lead ? 'checked' : ''}>
+            <span>Teamführung</span>
+          </label>
+          <label class="inline-field">
+            <span>Teamrolle</span>
+            <input type="text" value="${escapeHtmlAttr(entry.team_role || '')}" data-field="team_role" maxlength="80" placeholder="z. B. Sniper">
+          </label>
+          <label class="inline-field">
+            <span>Reihenfolge</span>
+            <input type="number" value="${escapeHtmlAttr(String(entry.team_sort_order ?? 999))}" data-field="team_sort_order" min="0" step="1">
+          </label>
+        </div>
+      </td>
+      <td data-team-image-url="${escapeHtmlAttr(entry.team_image_url || '')}">
+        <div class="team-image-editor">
+          <img class="team-image-thumb" src="${escapeHtmlAttr(resolveTeamImagePreview(entry.team_image_url))}" alt="Teamfoto Vorschau">
+          <label class="btn-tertiary team-image-picker">
+            Bild auswählen
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-field="team_image_file" hidden>
+          </label>
+          <button type="button" class="btn-secondary" data-action="reset-team-image">Zurücksetzen</button>
+        </div>
       </td>
       <td>${formatDateTime(entry.created_at)}</td>
       <td>${entry.last_sign_in_at ? formatDateTime(entry.last_sign_in_at) : '-'}</td>
       <td>
         <div class="table-actions">
           <button type="button" class="btn-tertiary" data-action="save-user">Speichern</button>
-          <button type="button" class="btn-danger" data-action="delete-user" ${entry.id === state.user.id ? 'disabled' : ''}>Loeschen</button>
+          <button type="button" class="btn-danger" data-action="delete-user" ${entry.id === state.user.id ? 'disabled' : ''}>Löschen</button>
         </div>
       </td>
     </tr>`).join('');
 
+  userRows.querySelectorAll('[data-field="is_team_lead"]').forEach(input => {
+    input.addEventListener('change', () => {
+      if (!input.checked) return;
+      const row = input.closest('tr');
+      const showOnTeam = row?.querySelector('[data-field="show_on_team"]');
+      if (showOnTeam) showOnTeam.checked = true;
+    });
+  });
+
+  userRows.querySelectorAll('[data-field="team_image_file"]').forEach(input => {
+    input.addEventListener('change', async () => {
+      const row = input.closest('tr');
+      const file = input.files?.[0];
+      input.value = '';
+      if (!row || !file) return;
+      await handleTeamImageSelection(row, file);
+    });
+  });
+
+  userRows.querySelectorAll('[data-action="reset-team-image"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const row = btn.closest('tr');
+      if (!row) return;
+      row.dataset.teamImageUrl = '';
+      updateTeamImagePreview(row, '');
+      await persistUserRow(row, 'Teamfoto zurückgesetzt.');
+    });
+  });
+
   userRows.querySelectorAll('[data-action="save-user"]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const row = btn.closest('tr');
-      const userId = row.dataset.userId;
-      const username = row.querySelector('[data-field="username"]').value.trim();
-      const role = row.querySelector('[data-field="role"]').value;
-
-      const { error: saveError } = await supabase.rpc('admin_update_user', {
-        p_user_id: userId,
-        p_username: username,
-        p_role: role
-      });
-
-      if (saveError) {
-        setMessage(userMessage, `Benutzer konnte nicht gespeichert werden: ${saveError.message}`, 'error');
-        return;
-      }
-
-      setMessage(userMessage, 'Benutzer aktualisiert.', 'success');
-      loadUsers();
+      await persistUserRow(row, 'Benutzer aktualisiert.');
     });
   });
 
@@ -1515,52 +887,229 @@ async function loadUsers() {
       }
 
       const username = row.querySelector('[data-field="username"]').value.trim() || 'dieses Konto';
-      if (!confirm(`Benutzer ${username} wirklich loeschen?`)) return;
+      if (!confirm(`Benutzer ${username} wirklich löschen?`)) return;
 
       btn.disabled = true;
-      await removeUserPhotosFromStorage(userId);
       const { data: deleted, error: deleteError } = await supabase.rpc('admin_delete_user', { p_user_id: userId });
       btn.disabled = false;
 
       if (deleteError) {
-        setMessage(userMessage, `Benutzer konnte nicht geloescht werden: ${deleteError.message}`, 'error');
+        setMessage(userMessage, `Benutzer konnte nicht gelöscht werden: ${deleteError.message}`, 'error');
         return;
       }
 
       if (!deleted) {
-        setMessage(userMessage, 'Benutzer konnte nicht geloescht werden. Bitte Seite neu laden und erneut versuchen.', 'error');
+        setMessage(userMessage, 'Benutzer konnte nicht gelöscht werden. Bitte Seite neu laden und erneut versuchen.', 'error');
         return;
       }
 
-      setMessage(userMessage, `Benutzer geloescht: ${username}`, 'success');
+      setMessage(userMessage, `Benutzer gelöscht: ${username}`, 'success');
       await loadUsers();
     });
   });
 }
 
-async function removeUserPhotosFromStorage(userId) {
-  if (!userId) return;
+async function persistUserRow(row, successMessage = 'Benutzer aktualisiert.') {
+  if (!row) return;
 
-  const { data, error } = await supabase
-    .from('photos')
-    .select('storage_path')
-    .eq('user_id', userId);
+  const userId = row.dataset.userId;
+  const username = row.querySelector('[data-field="username"]').value.trim();
+  const role = row.querySelector('[data-field="role"]').value;
+  const showOnTeamInput = row.querySelector('[data-field="show_on_team"]');
+  const isTeamLeadInput = row.querySelector('[data-field="is_team_lead"]');
+  const teamRole = row.querySelector('[data-field="team_role"]').value.trim();
+  const teamSortOrder = normalizeTeamSortOrder(row.querySelector('[data-field="team_sort_order"]').value);
+  const showOnTeam = Boolean(showOnTeamInput?.checked || isTeamLeadInput?.checked);
+  const isTeamLead = Boolean(isTeamLeadInput?.checked);
+  const teamImageUrl = row.dataset.teamImageUrl ?? row.querySelector('[data-team-image-url]')?.dataset.teamImageUrl ?? '';
 
-  if (error) {
-    console.warn('[Ragebaiters] User-Fotos konnten vor dem Loeschen nicht geladen werden:', error);
+  if (showOnTeamInput) showOnTeamInput.checked = showOnTeam;
+
+  const saveBasicError = await saveBasicUserRow(userId, username, role);
+  if (saveBasicError) {
+    setMessage(userMessage, `Benutzer konnte nicht gespeichert werden: ${saveBasicError.message}`, 'error');
     return;
   }
 
-  const paths = (data || [])
-    .map(entry => String(entry.storage_path || ''))
-    .filter(path => path && !isLocalPhotoPath(path));
+  const { error: saveError } = await supabase.rpc('admin_upsert_team_member', {
+    p_user_id: userId,
+    p_show_on_team: showOnTeam,
+    p_is_team_lead: isTeamLead,
+    p_team_role: teamRole || null,
+    p_team_image_url: teamImageUrl || null,
+    p_team_sort_order: teamSortOrder
+  });
 
-  if (!paths.length) return;
-
-  const { error: storageError } = await supabase.storage.from('photos').remove(paths);
-  if (storageError) {
-    console.warn('[Ragebaiters] User-Fotos konnten vor dem Loeschen nicht vollstaendig entfernt werden:', storageError);
+  if (saveError) {
+    setMessage(userMessage, `Benutzer konnte nicht gespeichert werden: ${saveError.message}`, 'error');
+    return;
   }
+
+  setMessage(userMessage, successMessage, 'success');
+  await loadUsers();
+}
+
+async function handleTeamImageSelection(row, file) {
+  if (!ALLOWED_MIME.includes(file.type)) {
+    setMessage(userMessage, 'Teamfoto hat einen nicht unterstützten Dateityp.', 'error');
+    return;
+  }
+
+  if (file.size > MAX_TEAM_IMAGE_BYTES) {
+    setMessage(userMessage, 'Teamfoto ist zu groß. Bitte maximal 4 MB verwenden.', 'error');
+    return;
+  }
+
+  try {
+    const dataUrl = await resizeImageToDataUrl(file, 720, 0.84);
+    row.dataset.teamImageUrl = dataUrl;
+    updateTeamImagePreview(row, dataUrl);
+    await persistUserRow(row, 'Teamfoto aktualisiert.');
+  } catch (error) {
+    setMessage(userMessage, `Teamfoto konnte nicht verarbeitet werden: ${error.message || error}`, 'error');
+  }
+}
+
+function updateTeamImagePreview(row, value) {
+  const preview = row?.querySelector('.team-image-thumb');
+  const cell = row?.querySelector('[data-team-image-url]');
+  if (!preview || !cell) return;
+
+  cell.dataset.teamImageUrl = value || '';
+  row.dataset.teamImageUrl = value || '';
+  preview.src = resolveTeamImagePreview(value);
+}
+
+async function createPhotoUploadRecord(payload) {
+  const rpcPayload = {
+    p_storage_path: payload.p_storage_path,
+    p_title: payload.p_title,
+    p_caption: payload.p_caption,
+    p_size_bytes: payload.p_size_bytes,
+    p_width: payload.p_width,
+    p_height: payload.p_height
+  };
+
+  const rpcResult = await supabase.rpc('create_photo_upload', rpcPayload);
+  if (!rpcResult.error) return rpcResult;
+
+  const message = String(rpcResult.error.message || '');
+  if (!/create_photo_upload|schema cache|function/i.test(message)) {
+    return rpcResult;
+  }
+
+  const insertResult = await supabase.from('photos').insert({
+    user_id: state.user.id,
+    storage_path: payload.p_storage_path,
+    title: payload.p_title,
+    caption: payload.p_caption,
+    mime: payload.p_mime || null,
+    size_bytes: payload.p_size_bytes,
+    width: payload.p_width,
+    height: payload.p_height,
+    visibility: state.role === 'observer' ? 'pending_review' : 'public'
+  });
+
+  if (!insertResult.error) return insertResult;
+  return { ...insertResult, error: insertResult.error };
+}
+
+async function removePhotoFromStorage(path) {
+  if (!path || isLocalPhotoPath(path)) return;
+  try {
+    await supabase.storage.from('photos').remove([path]);
+  } catch {
+    // Ignoriert Aufräumfehler, damit der eigentliche Upload-Fehler sichtbar bleibt.
+  }
+}
+
+function mapUploadError(error) {
+  const message = String(error?.message || error || '');
+  if (/row-level security|permission/i.test(message)) {
+    return 'Der Upload wurde gespeichert, aber der Datenbankeintrag durfte nicht angelegt werden. Bitte die aktuelle Supabase-SQL für Uploads ausführen.';
+  }
+  return message || 'Unbekannter Fehler';
+}
+
+async function loadTeamSettingsMap() {
+  const { data, error } = await supabase.rpc('admin_list_team_members');
+  if (error) {
+    console.warn('[Ragebaiters] Team-Einstellungen konnten nicht geladen werden:', error);
+    return new Map();
+  }
+
+  return new Map((data || []).map(entry => [entry.user_id, entry]));
+}
+
+async function saveBasicUserRow(userId, username, role) {
+  let response = await supabase.rpc('admin_update_user', {
+    p_user_id: userId,
+    p_username: username,
+    p_role: role
+  });
+
+  if (!response.error) return null;
+
+  const message = String(response.error.message || '');
+  if (!/schema cache|function|parameter|signature/i.test(message)) {
+    return response.error;
+  }
+
+  response = await supabase.rpc('admin_update_user', {
+    p_user_id: userId,
+    p_username: username,
+    p_role: role,
+    p_show_on_team: false,
+    p_is_team_lead: false,
+    p_team_role: null,
+    p_team_image_url: null,
+    p_team_sort_order: 999
+  });
+
+  return response.error || null;
+}
+
+function resolveTeamImagePreview(value) {
+  const image = String(value || '').trim();
+  if (!image) return TEAM_IMAGE_PLACEHOLDER;
+  if (image.startsWith('data:image/')) return image;
+  if (image.startsWith('__local__/')) return image.replace('__local__/', '');
+  if (/^(https?:)?\/\//i.test(image) || image.startsWith('images/')) return image;
+  const { data } = supabase.storage.from('photos').getPublicUrl(image);
+  return data.publicUrl || TEAM_IMAGE_PLACEHOLDER;
+}
+
+function normalizeTeamSortOrder(value) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 999;
+}
+
+function resizeImageToDataUrl(file, maxEdge = 720, quality = 0.84) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const ratio = Math.min(1, maxEdge / Math.max(img.naturalWidth, img.naturalHeight));
+        const width = Math.max(1, Math.round(img.naturalWidth * ratio));
+        const height = Math.max(1, Math.round(img.naturalHeight * ratio));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        if (!context) {
+          reject(new Error('Canvas-Kontext nicht verfügbar.'));
+          return;
+        }
+        context.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/webp', quality));
+      };
+      img.onerror = () => reject(new Error('Bild konnte nicht geladen werden.'));
+      img.src = String(reader.result || '');
+    };
+    reader.onerror = () => reject(new Error('Datei konnte nicht gelesen werden.'));
+    reader.readAsDataURL(file);
+  });
 }
 
 async function ensureProfile(user) {
@@ -1655,7 +1204,7 @@ function photoStatusLabel(visibility) {
   }
 
   const labels = {
-    public: 'Oeffentlich',
+    public: 'Öffentlich',
     pending_review: 'Wartet auf Freigabe',
     troll_internal: 'Nur intern'
   };
@@ -1699,15 +1248,11 @@ function mapTestAccountError(error) {
   const message = String(error?.message || error || '');
 
   if (/admin_get_test_account_access/i.test(message) && /schema cache/i.test(message)) {
-    return 'Die neue Supabase-Funktion fehlt noch. Bitte die aktuelle supabase_admin_dashboard.sql einmal komplett im Supabase SQL Editor ausfuehren.';
-  }
-
-  if (/admin_rotate_test_account_access/i.test(message) && /schema cache/i.test(message)) {
-    return 'Die automatische Testaccount-Rotation fehlt noch in Supabase. Bitte die aktuelle supabase_admin_dashboard.sql einmal komplett ausfuehren.';
+    return 'Die neue Supabase-Funktion fehlt noch. Bitte die aktuelle supabase_admin_dashboard.sql einmal komplett im Supabase SQL Editor ausführen.';
   }
 
   if (/admin_prepare_test_account/i.test(message) && /schema cache/i.test(message)) {
-    return 'Die Testaccount-Vorbereitung fehlt noch in Supabase. Bitte die aktuelle supabase_admin_dashboard.sql einmal komplett ausfuehren.';
+    return 'Die Testaccount-Vorbereitung fehlt noch in Supabase. Bitte die aktuelle supabase_admin_dashboard.sql einmal komplett ausführen.';
   }
 
   return message || 'Unbekannter Fehler';
@@ -1725,15 +1270,4 @@ function escapeHtml(value) {
 
 function escapeHtmlAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#96;');
-}
-
-function cssEscape(value) {
-  const raw = String(value ?? '');
-  if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(raw);
-
-  return raw.replace(/[^a-zA-Z0-9_-]/g, char => {
-    const code = char.codePointAt(0);
-    if (!code) return '';
-    return `\\${code.toString(16)} `;
-  });
 }
