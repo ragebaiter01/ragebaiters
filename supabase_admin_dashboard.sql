@@ -15,15 +15,6 @@ drop view if exists public.photos_public;
 drop function if exists public.list_gallery_photos(boolean);
 drop function if exists public.get_latest_gallery_photo(boolean);
 drop function if exists public.can_view_nathan_posts(uuid);
-drop function if exists public.admin_get_test_account_access();
-drop function if exists public.admin_rotate_test_account_access(text);
-drop function if exists public.resolve_login_email(text);
-drop function if exists public.hard_delete_user_account(uuid);
-drop function if exists public.admin_cleanup_expired_test_accounts(text);
-drop function if exists public.get_homepage_instagram_post();
-drop function if exists public.admin_set_homepage_instagram_post(text, text, text, text, timestamptz, text);
-drop function if exists public.get_team_members();
-drop function if exists public.admin_set_team_members(jsonb);
 
 create table if not exists public.site_settings (
   key text primary key,
@@ -103,6 +94,237 @@ as $$
       and used_by is null
   );
 $$;
+
+-- ============================================================
+-- Finale Definitionen fuer Teamseite + Teamfuehrung + Uploads
+-- Dieser Block steht bewusst am Dateiende, damit er aeltere
+-- doppelte Definitionen in dieser Datei sicher ueberschreibt.
+-- ============================================================
+
+alter table public.profiles add column if not exists show_on_team boolean not null default false;
+alter table public.profiles add column if not exists is_team_lead boolean not null default false;
+alter table public.profiles add column if not exists team_role text;
+alter table public.profiles add column if not exists team_image_url text;
+alter table public.profiles add column if not exists team_sort_order integer not null default 999;
+
+drop function if exists public.admin_list_users();
+create or replace function public.admin_list_users()
+returns table (
+  id uuid,
+  email text,
+  username text,
+  role text,
+  show_on_team boolean,
+  is_team_lead boolean,
+  team_role text,
+  team_image_url text,
+  team_sort_order integer,
+  created_at timestamptz,
+  last_sign_in_at timestamptz
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select
+    u.id,
+    u.email::text,
+    p.username,
+    coalesce(p.role, 'observer') as role,
+    coalesce(p.show_on_team, false) as show_on_team,
+    coalesce(p.is_team_lead, false) as is_team_lead,
+    p.team_role,
+    p.team_image_url,
+    coalesce(p.team_sort_order, 999) as team_sort_order,
+    u.created_at,
+    u.last_sign_in_at
+  from auth.users u
+  left join public.profiles p on p.id = u.id
+  where public.is_admin()
+  order by u.created_at desc;
+$$;
+
+drop function if exists public.admin_update_user(uuid, text, text);
+drop function if exists public.admin_update_user(uuid, text, text, boolean, boolean, text, text, integer);
+create or replace function public.admin_update_user(
+  p_user_id uuid,
+  p_username text,
+  p_role text,
+  p_show_on_team boolean default false,
+  p_is_team_lead boolean default false,
+  p_team_role text default null,
+  p_team_image_url text default null,
+  p_team_sort_order integer default 999
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_username text;
+  v_role text;
+  v_team_role text;
+  v_team_image_url text;
+  v_team_sort_order integer;
+begin
+  if not public.is_admin() then
+    raise exception 'Nur Admins duerfen Benutzer bearbeiten.';
+  end if;
+
+  v_username := trim(coalesce(p_username, ''));
+  v_role := trim(coalesce(p_role, 'member'));
+  v_team_role := nullif(trim(coalesce(p_team_role, '')), '');
+  v_team_image_url := nullif(trim(coalesce(p_team_image_url, '')), '');
+  v_team_sort_order := greatest(coalesce(p_team_sort_order, 999), 0);
+
+  if v_username = '' then
+    raise exception 'Der Benutzername darf nicht leer sein.';
+  end if;
+
+  if length(v_username) < 3 or length(v_username) > 32 then
+    raise exception 'Der Benutzername muss zwischen 3 und 32 Zeichen lang sein.';
+  end if;
+
+  if v_username !~ '^[A-Za-z0-9_.-]+$' then
+    raise exception 'Der Benutzername enthaelt ungueltige Zeichen.';
+  end if;
+
+  if v_role not in ('observer', 'member', 'admin') then
+    raise exception 'Ungueltige Rolle.';
+  end if;
+
+  if exists (
+    select 1
+    from public.profiles
+    where username = v_username
+      and id <> p_user_id
+  ) then
+    raise exception 'Dieser Benutzername ist bereits vergeben.';
+  end if;
+
+  insert into public.profiles (
+    id,
+    username,
+    role,
+    show_on_team,
+    is_team_lead,
+    team_role,
+    team_image_url,
+    team_sort_order
+  )
+  values (
+    p_user_id,
+    v_username,
+    v_role,
+    coalesce(p_show_on_team, false) or coalesce(p_is_team_lead, false),
+    coalesce(p_is_team_lead, false),
+    v_team_role,
+    v_team_image_url,
+    v_team_sort_order
+  )
+  on conflict (id) do update
+    set username = excluded.username,
+        role = excluded.role,
+        show_on_team = excluded.show_on_team,
+        is_team_lead = excluded.is_team_lead,
+        team_role = excluded.team_role,
+        team_image_url = excluded.team_image_url,
+        team_sort_order = excluded.team_sort_order;
+
+  return true;
+end;
+$$;
+
+create or replace function public.list_team_members()
+returns table (
+  username text,
+  role text,
+  show_on_team boolean,
+  is_team_lead boolean,
+  team_role text,
+  team_image_url text,
+  team_sort_order integer
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select
+    coalesce(p.username, split_part(u.email::text, '@', 1)) as username,
+    coalesce(p.role, 'observer') as role,
+    coalesce(p.show_on_team, false) as show_on_team,
+    coalesce(p.is_team_lead, false) as is_team_lead,
+    coalesce(p.team_role, case
+      when coalesce(p.is_team_lead, false) then 'Teamfuehrung'
+      when coalesce(p.role, 'observer') = 'admin' then 'Admin'
+      when coalesce(p.role, 'observer') = 'observer' then 'Beobachter'
+      else 'Mitglied'
+    end) as team_role,
+    p.team_image_url,
+    coalesce(p.team_sort_order, 999) as team_sort_order
+  from auth.users u
+  left join public.profiles p on p.id = u.id
+  where coalesce(p.show_on_team, false) = true
+     or coalesce(p.is_team_lead, false) = true
+  order by coalesce(p.is_team_lead, false) desc,
+           coalesce(p.team_sort_order, 999) asc,
+           coalesce(p.username, split_part(u.email::text, '@', 1)) asc;
+$$;
+
+drop function if exists public.create_photo_upload(text, text, text, bigint, integer, integer);
+create or replace function public.create_photo_upload(
+  p_storage_path text,
+  p_title text,
+  p_caption text default null,
+  p_size_bytes bigint default null,
+  p_width integer default null,
+  p_height integer default null
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Du musst eingeloggt sein, um Bilder hochzuladen.';
+  end if;
+
+  insert into public.photos (
+    user_id,
+    storage_path,
+    title,
+    caption,
+    size_bytes,
+    width,
+    height,
+    visibility
+  )
+  values (
+    auth.uid(),
+    trim(coalesce(p_storage_path, '')),
+    nullif(trim(coalesce(p_title, '')), ''),
+    nullif(trim(coalesce(p_caption, '')), ''),
+    p_size_bytes,
+    p_width,
+    p_height,
+    case
+      when public.current_user_role() = 'observer' then 'pending_review'
+      else 'public'
+    end
+  );
+
+  return true;
+end;
+$$;
+
+grant execute on function public.admin_list_users() to authenticated;
+grant execute on function public.admin_update_user(uuid, text, text, boolean, boolean, text, text, integer) to authenticated;
+grant execute on function public.list_team_members() to anon, authenticated;
+grant execute on function public.create_photo_upload(text, text, text, bigint, integer, integer) to authenticated;
 
 create or replace function public.redeem_invite(p_code text)
 returns text
@@ -498,30 +720,31 @@ end;
 $$;
 
 -- ============================================================
--- Homepage Instagram Card (Design vorbereitet fuer Live-Sync)
+-- Finale Definitionen fuer Teamseite + Teamfuehrung + Uploads
+-- Dieser Block steht bewusst am Dateiende, damit er aeltere
+-- doppelte Definitionen in dieser Datei sicher ueberschreibt.
 -- ============================================================
 
-drop function if exists public.get_homepage_instagram_post();
-drop function if exists public.admin_set_homepage_instagram_post(text, text, text, text, timestamptz, text);
+alter table public.profiles add column if not exists show_on_team boolean not null default false;
+alter table public.profiles add column if not exists is_team_lead boolean not null default false;
+alter table public.profiles add column if not exists team_role text;
+alter table public.profiles add column if not exists team_image_url text;
+alter table public.profiles add column if not exists team_sort_order integer not null default 999;
 
-insert into public.site_settings (key, value_text)
-values
-  ('homepage_instagram_post_url', ''),
-  ('homepage_instagram_image_url', ''),
-  ('homepage_instagram_title', ''),
-  ('homepage_instagram_caption', ''),
-  ('homepage_instagram_posted_at', ''),
-  ('homepage_instagram_username', 'die_ragebaiters')
-on conflict (key) do nothing;
-
-create or replace function public.get_homepage_instagram_post()
+drop function if exists public.admin_list_users();
+create or replace function public.admin_list_users()
 returns table (
-  post_url text,
-  image_url text,
-  title text,
-  caption text,
-  posted_at timestamptz,
-  username text
+  id uuid,
+  email text,
+  username text,
+  role text,
+  show_on_team boolean,
+  is_team_lead boolean,
+  team_role text,
+  team_image_url text,
+  team_sort_order integer,
+  created_at timestamptz,
+  last_sign_in_at timestamptz
 )
 language sql
 security definer
@@ -529,115 +752,203 @@ set search_path = public
 stable
 as $$
   select
-    coalesce((select value_text from public.site_settings where key = 'homepage_instagram_post_url'), '') as post_url,
-    coalesce((select value_text from public.site_settings where key = 'homepage_instagram_image_url'), '') as image_url,
-    coalesce((select value_text from public.site_settings where key = 'homepage_instagram_title'), '') as title,
-    coalesce((select value_text from public.site_settings where key = 'homepage_instagram_caption'), '') as caption,
-    nullif((select value_text from public.site_settings where key = 'homepage_instagram_posted_at'), '')::timestamptz as posted_at,
-    coalesce((select value_text from public.site_settings where key = 'homepage_instagram_username'), 'die_ragebaiters') as username;
+    u.id,
+    u.email::text,
+    p.username,
+    coalesce(p.role, 'observer') as role,
+    coalesce(p.show_on_team, false) as show_on_team,
+    coalesce(p.is_team_lead, false) as is_team_lead,
+    p.team_role,
+    p.team_image_url,
+    coalesce(p.team_sort_order, 999) as team_sort_order,
+    u.created_at,
+    u.last_sign_in_at
+  from auth.users u
+  left join public.profiles p on p.id = u.id
+  where public.is_admin()
+  order by u.created_at desc;
 $$;
 
-create or replace function public.admin_set_homepage_instagram_post(
-  p_post_url text,
-  p_image_url text,
-  p_title text default '',
-  p_caption text default '',
-  p_posted_at timestamptz default null,
-  p_username text default 'die_ragebaiters'
+drop function if exists public.admin_update_user(uuid, text, text);
+drop function if exists public.admin_update_user(uuid, text, text, boolean, boolean, text, text, integer);
+create or replace function public.admin_update_user(
+  p_user_id uuid,
+  p_username text,
+  p_role text,
+  p_show_on_team boolean default false,
+  p_is_team_lead boolean default false,
+  p_team_role text default null,
+  p_team_image_url text default null,
+  p_team_sort_order integer default 999
 )
 returns boolean
 language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_username text;
+  v_role text;
+  v_team_role text;
+  v_team_image_url text;
+  v_team_sort_order integer;
 begin
   if not public.is_admin() then
-    raise exception 'Nur Admins duerfen den Instagram-Beitrag auf der Startseite aendern.';
+    raise exception 'Nur Admins duerfen Benutzer bearbeiten.';
   end if;
 
-  insert into public.site_settings (key, value_text, updated_at, updated_by)
-  values
-    ('homepage_instagram_post_url', trim(coalesce(p_post_url, '')), now(), auth.uid()),
-    ('homepage_instagram_image_url', trim(coalesce(p_image_url, '')), now(), auth.uid()),
-    ('homepage_instagram_title', trim(coalesce(p_title, '')), now(), auth.uid()),
-    ('homepage_instagram_caption', trim(coalesce(p_caption, '')), now(), auth.uid()),
-    ('homepage_instagram_posted_at', coalesce(p_posted_at::text, ''), now(), auth.uid()),
-    ('homepage_instagram_username', trim(coalesce(p_username, 'die_ragebaiters')), now(), auth.uid())
-  on conflict (key) do update
-    set value_text = excluded.value_text,
-        updated_at = excluded.updated_at,
-        updated_by = excluded.updated_by;
+  v_username := trim(coalesce(p_username, ''));
+  v_role := trim(coalesce(p_role, 'member'));
+  v_team_role := nullif(trim(coalesce(p_team_role, '')), '');
+  v_team_image_url := nullif(trim(coalesce(p_team_image_url, '')), '');
+  v_team_sort_order := greatest(coalesce(p_team_sort_order, 999), 0);
+
+  if v_username = '' then
+    raise exception 'Der Benutzername darf nicht leer sein.';
+  end if;
+
+  if length(v_username) < 3 or length(v_username) > 32 then
+    raise exception 'Der Benutzername muss zwischen 3 und 32 Zeichen lang sein.';
+  end if;
+
+  if v_username !~ '^[A-Za-z0-9_.-]+$' then
+    raise exception 'Der Benutzername enthaelt ungueltige Zeichen.';
+  end if;
+
+  if v_role not in ('observer', 'member', 'admin') then
+    raise exception 'Ungueltige Rolle.';
+  end if;
+
+  if exists (
+    select 1
+    from public.profiles
+    where username = v_username
+      and id <> p_user_id
+  ) then
+    raise exception 'Dieser Benutzername ist bereits vergeben.';
+  end if;
+
+  insert into public.profiles (
+    id,
+    username,
+    role,
+    show_on_team,
+    is_team_lead,
+    team_role,
+    team_image_url,
+    team_sort_order
+  )
+  values (
+    p_user_id,
+    v_username,
+    v_role,
+    coalesce(p_show_on_team, false) or coalesce(p_is_team_lead, false),
+    coalesce(p_is_team_lead, false),
+    v_team_role,
+    v_team_image_url,
+    v_team_sort_order
+  )
+  on conflict (id) do update
+    set username = excluded.username,
+        role = excluded.role,
+        show_on_team = excluded.show_on_team,
+        is_team_lead = excluded.is_team_lead,
+        team_role = excluded.team_role,
+        team_image_url = excluded.team_image_url,
+        team_sort_order = excluded.team_sort_order;
 
   return true;
 end;
 $$;
 
-grant execute on function public.get_homepage_instagram_post() to anon, authenticated;
-grant execute on function public.admin_set_homepage_instagram_post(text, text, text, text, timestamptz, text) to authenticated;
-
--- ============================================================
--- Team-Verwaltung fuer Dashboard + Team-Seite
--- ============================================================
-
-drop function if exists public.get_team_members();
-drop function if exists public.admin_set_team_members(jsonb);
-
-insert into public.site_settings (key, value_text)
-values (
-  'team_members_json',
-  $$[
-    {"id":"ben","name":"Yotzek (Ben)","role":"Teamfuehrer","description":"Ben koordiniert die Truppe und bewahrt selbst im Gefecht einen kuehlen Kopf.","image_url":"images/benf.png","is_leader":true,"sort_order":10},
-    {"id":"jason","name":"sneiper0 (Jason)","role":"Sniper","description":"Praezisionsschuetze der Ragebaiters.","image_url":"images/logo.png","is_leader":false,"sort_order":20},
-    {"id":"michael","name":"MundMbrothers (Michael)","role":"Medic","description":"Sorgt fuer die Einsatzfaehigkeit des Teams.","image_url":"images/michi2.png","is_leader":false,"sort_order":30},
-    {"id":"nils","name":"Disccave (Nils)","role":"Breacher / OG","description":"Einer der OGs. Experte fuer Improvisation.","image_url":"images/nils.png","is_leader":false,"sort_order":40},
-    {"id":"nathan","name":"Nathan Goldstein (Nathan)","role":"Support","description":"Gibt Feuerschutz mit hohem Munitionsdurchsatz.","image_url":"images/nathan.png","is_leader":false,"sort_order":50},
-    {"id":"riccardo","name":"Gemeral Richard (Riccardo)","role":"Breacher","description":"Spezialist fuer CQB.","image_url":"images/riccardo.png","is_leader":false,"sort_order":60},
-    {"id":"wolfgang","name":"Wolfgang","role":"Techniker","description":"Haelt die Markierer am Laufen.","image_url":"images/wolfgang.png","is_leader":false,"sort_order":70}
-  ]$$
+create or replace function public.list_team_members()
+returns table (
+  username text,
+  role text,
+  show_on_team boolean,
+  is_team_lead boolean,
+  team_role text,
+  team_image_url text,
+  team_sort_order integer
 )
-on conflict (key) do nothing;
-
-create or replace function public.get_team_members()
-returns jsonb
 language sql
 security definer
 set search_path = public
 stable
 as $$
-  select coalesce(
-    (select value_text::jsonb from public.site_settings where key = 'team_members_json'),
-    '[]'::jsonb
-  );
+  select
+    coalesce(p.username, split_part(u.email::text, '@', 1)) as username,
+    coalesce(p.role, 'observer') as role,
+    coalesce(p.show_on_team, false) as show_on_team,
+    coalesce(p.is_team_lead, false) as is_team_lead,
+    coalesce(p.team_role, case
+      when coalesce(p.is_team_lead, false) then 'Teamfuehrung'
+      when coalesce(p.role, 'observer') = 'admin' then 'Admin'
+      when coalesce(p.role, 'observer') = 'observer' then 'Beobachter'
+      else 'Mitglied'
+    end) as team_role,
+    p.team_image_url,
+    coalesce(p.team_sort_order, 999) as team_sort_order
+  from auth.users u
+  left join public.profiles p on p.id = u.id
+  where coalesce(p.show_on_team, false) = true
+     or coalesce(p.is_team_lead, false) = true
+  order by coalesce(p.is_team_lead, false) desc,
+           coalesce(p.team_sort_order, 999) asc,
+           coalesce(p.username, split_part(u.email::text, '@', 1)) asc;
 $$;
 
-create or replace function public.admin_set_team_members(p_members jsonb)
+drop function if exists public.create_photo_upload(text, text, text, bigint, integer, integer);
+create or replace function public.create_photo_upload(
+  p_storage_path text,
+  p_title text,
+  p_caption text default null,
+  p_size_bytes bigint default null,
+  p_width integer default null,
+  p_height integer default null
+)
 returns boolean
 language plpgsql
 security definer
 set search_path = public
 as $$
 begin
-  if not public.is_admin() then
-    raise exception 'Nur Admins duerfen die Team-Seite bearbeiten.';
+  if auth.uid() is null then
+    raise exception 'Du musst eingeloggt sein, um Bilder hochzuladen.';
   end if;
 
-  if jsonb_typeof(coalesce(p_members, 'null'::jsonb)) <> 'array' then
-    raise exception 'Die Team-Daten muessen als JSON-Array gespeichert werden.';
-  end if;
-
-  insert into public.site_settings (key, value_text, updated_at, updated_by)
-  values ('team_members_json', p_members::text, now(), auth.uid())
-  on conflict (key) do update
-    set value_text = excluded.value_text,
-        updated_at = excluded.updated_at,
-        updated_by = excluded.updated_by;
+  insert into public.photos (
+    user_id,
+    storage_path,
+    title,
+    caption,
+    size_bytes,
+    width,
+    height,
+    visibility
+  )
+  values (
+    auth.uid(),
+    trim(coalesce(p_storage_path, '')),
+    nullif(trim(coalesce(p_title, '')), ''),
+    nullif(trim(coalesce(p_caption, '')), ''),
+    p_size_bytes,
+    p_width,
+    p_height,
+    case
+      when public.current_user_role() = 'observer' then 'pending_review'
+      else 'public'
+    end
+  );
 
   return true;
 end;
 $$;
 
-grant execute on function public.get_team_members() to anon, authenticated;
-grant execute on function public.admin_set_team_members(jsonb) to authenticated;
+grant execute on function public.admin_list_users() to authenticated;
+grant execute on function public.admin_update_user(uuid, text, text, boolean, boolean, text, text, integer) to authenticated;
+grant execute on function public.list_team_members() to anon, authenticated;
+grant execute on function public.create_photo_upload(text, text, text, bigint, integer, integer) to authenticated;
 
 -- ============================================================
 -- Testaccount fuer Admin-Vorschau
@@ -826,7 +1137,11 @@ begin
     return false;
   end if;
 
-  -- Storage-Dateien werden clientseitig ueber die Storage API entfernt.
+  if v_storage_path not like '__local__/%' then
+    delete from storage.objects
+    where bucket_id = 'photos'
+      and name = v_storage_path;
+  end if;
 
   delete from public.photos
   where id = p_photo_id;
@@ -852,7 +1167,9 @@ begin
     raise exception 'Du kannst deinen eigenen Admin-Account hier nicht loeschen.';
   end if;
 
-  -- Storage-Dateien werden clientseitig ueber die Storage API entfernt.
+  delete from storage.objects
+  where bucket_id = 'photos'
+    and name like p_user_id::text || '/%';
 
   delete from public.photos
   where user_id = p_user_id;
@@ -861,15 +1178,15 @@ begin
   where id = p_user_id;
 
   if to_regclass('auth.sessions') is not null then
-    execute 'delete from auth.sessions where user_id::text = $1' using p_user_id::text;
+    execute 'delete from auth.sessions where user_id = $1' using p_user_id;
   end if;
 
   if to_regclass('auth.refresh_tokens') is not null then
-    execute 'delete from auth.refresh_tokens where user_id::text = $1' using p_user_id::text;
+    execute 'delete from auth.refresh_tokens where user_id = $1' using p_user_id;
   end if;
 
   if to_regclass('auth.identities') is not null then
-    execute 'delete from auth.identities where user_id::text = $1' using p_user_id::text;
+    execute 'delete from auth.identities where user_id = $1' using p_user_id;
   end if;
 
   delete from auth.users
@@ -904,6 +1221,232 @@ grant execute on function public.admin_delete_photo(bigint) to authenticated;
 grant execute on function public.admin_delete_user(uuid) to authenticated;
 
 grant select on public.photos_public to anon, authenticated;
+
+-- ============================================================
+-- Teamseite + Teamführung + robuster Upload
+-- ============================================================
+
+alter table public.profiles add column if not exists show_on_team boolean not null default false;
+alter table public.profiles add column if not exists is_team_lead boolean not null default false;
+alter table public.profiles add column if not exists team_role text;
+alter table public.profiles add column if not exists team_image_url text;
+alter table public.profiles add column if not exists team_sort_order integer not null default 999;
+
+create or replace function public.admin_list_users()
+returns table (
+  id uuid,
+  email text,
+  username text,
+  role text,
+  show_on_team boolean,
+  is_team_lead boolean,
+  team_role text,
+  team_image_url text,
+  team_sort_order integer,
+  created_at timestamptz,
+  last_sign_in_at timestamptz
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select
+    u.id,
+    u.email::text,
+    p.username,
+    coalesce(p.role, 'observer') as role,
+    coalesce(p.show_on_team, false) as show_on_team,
+    coalesce(p.is_team_lead, false) as is_team_lead,
+    p.team_role,
+    p.team_image_url,
+    coalesce(p.team_sort_order, 999) as team_sort_order,
+    u.created_at,
+    u.last_sign_in_at
+  from auth.users u
+  left join public.profiles p on p.id = u.id
+  where public.is_admin()
+  order by u.created_at desc;
+$$;
+
+drop function if exists public.admin_update_user(uuid, text, text);
+create or replace function public.admin_update_user(
+  p_user_id uuid,
+  p_username text,
+  p_role text,
+  p_show_on_team boolean default false,
+  p_is_team_lead boolean default false,
+  p_team_role text default null,
+  p_team_image_url text default null,
+  p_team_sort_order integer default 999
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_username text;
+  v_role text;
+  v_team_role text;
+  v_team_image_url text;
+  v_team_sort_order integer;
+begin
+  if not public.is_admin() then
+    raise exception 'Nur Admins dürfen Benutzer bearbeiten.';
+  end if;
+
+  v_username := trim(coalesce(p_username, ''));
+  v_role := trim(coalesce(p_role, 'member'));
+  v_team_role := nullif(trim(coalesce(p_team_role, '')), '');
+  v_team_image_url := nullif(trim(coalesce(p_team_image_url, '')), '');
+  v_team_sort_order := greatest(coalesce(p_team_sort_order, 999), 0);
+
+  if v_username = '' then
+    raise exception 'Der Benutzername darf nicht leer sein.';
+  end if;
+
+  if length(v_username) < 3 or length(v_username) > 32 then
+    raise exception 'Der Benutzername muss zwischen 3 und 32 Zeichen lang sein.';
+  end if;
+
+  if v_username !~ '^[A-Za-z0-9_.-]+$' then
+    raise exception 'Der Benutzername enthält ungültige Zeichen.';
+  end if;
+
+  if v_role not in ('observer', 'member', 'admin') then
+    raise exception 'Ungültige Rolle.';
+  end if;
+
+  if exists (
+    select 1
+    from public.profiles
+    where username = v_username
+      and id <> p_user_id
+  ) then
+    raise exception 'Dieser Benutzername ist bereits vergeben.';
+  end if;
+
+  insert into public.profiles (
+    id,
+    username,
+    role,
+    show_on_team,
+    is_team_lead,
+    team_role,
+    team_image_url,
+    team_sort_order
+  )
+  values (
+    p_user_id,
+    v_username,
+    v_role,
+    coalesce(p_show_on_team, false) or coalesce(p_is_team_lead, false),
+    coalesce(p_is_team_lead, false),
+    v_team_role,
+    v_team_image_url,
+    v_team_sort_order
+  )
+  on conflict (id) do update
+    set username = excluded.username,
+        role = excluded.role,
+        show_on_team = excluded.show_on_team,
+        is_team_lead = excluded.is_team_lead,
+        team_role = excluded.team_role,
+        team_image_url = excluded.team_image_url,
+        team_sort_order = excluded.team_sort_order;
+
+  return true;
+end;
+$$;
+
+create or replace function public.list_team_members()
+returns table (
+  username text,
+  role text,
+  show_on_team boolean,
+  is_team_lead boolean,
+  team_role text,
+  team_image_url text,
+  team_sort_order integer
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select
+    coalesce(p.username, split_part(u.email::text, '@', 1)) as username,
+    coalesce(p.role, 'observer') as role,
+    coalesce(p.show_on_team, false) as show_on_team,
+    coalesce(p.is_team_lead, false) as is_team_lead,
+    coalesce(p.team_role, case
+      when coalesce(p.is_team_lead, false) then 'Teamführung'
+      when coalesce(p.role, 'observer') = 'admin' then 'Admin'
+      when coalesce(p.role, 'observer') = 'observer' then 'Beobachter'
+      else 'Mitglied'
+    end) as team_role,
+    p.team_image_url,
+    coalesce(p.team_sort_order, 999) as team_sort_order
+  from auth.users u
+  left join public.profiles p on p.id = u.id
+  where coalesce(p.show_on_team, false) = true
+     or coalesce(p.is_team_lead, false) = true
+  order by coalesce(p.is_team_lead, false) desc,
+           coalesce(p.team_sort_order, 999) asc,
+           coalesce(p.username, split_part(u.email::text, '@', 1)) asc;
+$$;
+
+create or replace function public.create_photo_upload(
+  p_storage_path text,
+  p_title text,
+  p_caption text default null,
+  p_size_bytes bigint default null,
+  p_width integer default null,
+  p_height integer default null
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Du musst eingeloggt sein, um Bilder hochzuladen.';
+  end if;
+
+  insert into public.photos (
+    user_id,
+    storage_path,
+    title,
+    caption,
+    size_bytes,
+    width,
+    height,
+    visibility
+  )
+  values (
+    auth.uid(),
+    trim(coalesce(p_storage_path, '')),
+    nullif(trim(coalesce(p_title, '')), ''),
+    nullif(trim(coalesce(p_caption, '')), ''),
+    p_size_bytes,
+    p_width,
+    p_height,
+    case
+      when public.current_user_role() = 'observer' then 'pending_review'
+      else 'public'
+    end
+  );
+
+  return true;
+end;
+$$;
+
+grant execute on function public.admin_list_users() to authenticated;
+grant execute on function public.admin_update_user(uuid, text, text, boolean, boolean, text, text, integer) to authenticated;
+grant execute on function public.list_team_members() to anon, authenticated;
+grant execute on function public.create_photo_upload(text, text, text, bigint, integer, integer) to authenticated;
 -- Ragebaiters Admin Dashboard / Supabase Setup
 -- Diese Datei im Supabase SQL Editor ausfuehren.
 -- Enthält den Observer-Review-Workflow inkl. Admin-Troll-Aktion.
@@ -1416,7 +1959,11 @@ begin
     return false;
   end if;
 
-  -- Storage-Dateien werden clientseitig ueber die Storage API entfernt.
+  if v_storage_path not like '__local__/%' then
+    delete from storage.objects
+    where bucket_id = 'photos'
+      and name = v_storage_path;
+  end if;
 
   delete from public.photos
   where id = p_photo_id;
@@ -1442,7 +1989,9 @@ begin
     raise exception 'Du kannst deinen eigenen Admin-Account hier nicht loeschen.';
   end if;
 
-  -- Storage-Dateien werden clientseitig ueber die Storage API entfernt.
+  delete from storage.objects
+  where bucket_id = 'photos'
+    and name like p_user_id::text || '/%';
 
   delete from public.photos
   where user_id = p_user_id;
@@ -1451,15 +2000,15 @@ begin
   where id = p_user_id;
 
   if to_regclass('auth.sessions') is not null then
-    execute 'delete from auth.sessions where user_id::text = $1' using p_user_id::text;
+    execute 'delete from auth.sessions where user_id = $1' using p_user_id;
   end if;
 
   if to_regclass('auth.refresh_tokens') is not null then
-    execute 'delete from auth.refresh_tokens where user_id::text = $1' using p_user_id::text;
+    execute 'delete from auth.refresh_tokens where user_id = $1' using p_user_id;
   end if;
 
   if to_regclass('auth.identities') is not null then
-    execute 'delete from auth.identities where user_id::text = $1' using p_user_id::text;
+    execute 'delete from auth.identities where user_id = $1' using p_user_id;
   end if;
 
   delete from auth.users
@@ -1589,405 +2138,6 @@ end;
 $$;
 
 grant execute on function public.admin_mark_photo_as_troll(bigint) to authenticated;
-
--- ============================================================
--- 2026-04-23: Username-Login + 5-Minuten-Testaccount-Rotation
--- ============================================================
-
-drop function if exists public.admin_get_test_account_access();
-drop function if exists public.admin_rotate_test_account_access(text);
-drop function if exists public.resolve_login_email(text);
-drop function if exists public.hard_delete_user_account(uuid);
-drop function if exists public.admin_cleanup_expired_test_accounts(text);
-
-create table if not exists public.test_account_sessions (
-  id uuid primary key default gen_random_uuid(),
-  session_scope text not null unique,
-  email text not null unique,
-  username text not null,
-  role text not null default 'observer',
-  auth_user_id uuid references auth.users (id) on delete set null,
-  created_by uuid references auth.users (id) on delete set null,
-  created_at timestamptz not null default now(),
-  expires_at timestamptz not null
-);
-
-alter table public.test_account_sessions
-  drop constraint if exists test_account_sessions_role_check;
-
-alter table public.test_account_sessions
-  add constraint test_account_sessions_role_check
-  check (role in ('observer', 'member', 'admin'));
-
-create index if not exists test_account_sessions_expires_at_idx
-  on public.test_account_sessions (expires_at);
-
-create or replace function public.hard_delete_user_account(p_user_id uuid)
-returns boolean
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_deleted_count integer := 0;
-begin
-  if p_user_id is null then
-    return false;
-  end if;
-
-  -- Direkte SQL-Loeschungen in storage.objects sind in Supabase blockiert.
-  -- Temporaere Testaccounts werden deshalb hier nur aus Auth- und DB-Tabellen entfernt.
-
-  delete from public.photos
-  where user_id = p_user_id;
-
-  delete from public.profiles
-  where id = p_user_id;
-
-  delete from public.test_account_sessions
-  where auth_user_id = p_user_id;
-
-  if to_regclass('auth.sessions') is not null then
-    execute 'delete from auth.sessions where user_id::text = $1' using p_user_id::text;
-  end if;
-
-  if to_regclass('auth.refresh_tokens') is not null then
-    execute 'delete from auth.refresh_tokens where user_id::text = $1' using p_user_id::text;
-  end if;
-
-  if to_regclass('auth.identities') is not null then
-    execute 'delete from auth.identities where user_id::text = $1' using p_user_id::text;
-  end if;
-
-  delete from auth.users
-  where id = p_user_id;
-
-  get diagnostics v_deleted_count = row_count;
-  return v_deleted_count > 0;
-end;
-$$;
-
-create or replace function public.admin_cleanup_expired_test_accounts(
-  p_force_session_scope text default null
-)
-returns integer
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_force_scope text := nullif(trim(coalesce(p_force_session_scope, '')), '');
-  v_deleted_count integer := 0;
-  v_session record;
-begin
-  if not public.is_admin() then
-    raise exception 'Nur Admins duerfen Testaccounts bereinigen.';
-  end if;
-
-  for v_session in
-    select session_scope, auth_user_id
-    from public.test_account_sessions
-    where expires_at <= now()
-       or (v_force_scope is not null and session_scope = v_force_scope)
-  loop
-    if v_session.auth_user_id is not null then
-      perform public.hard_delete_user_account(v_session.auth_user_id);
-    end if;
-
-    delete from public.test_account_sessions
-    where session_scope = v_session.session_scope;
-
-    v_deleted_count := v_deleted_count + 1;
-  end loop;
-
-  return v_deleted_count;
-end;
-$$;
-
-create or replace function public.admin_get_test_account_access()
-returns table (
-  session_scope text,
-  email text,
-  password text,
-  username text,
-  role text,
-  expires_at timestamptz
-)
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_seed text;
-  v_session_scope text;
-  v_email text;
-  v_password text;
-  v_username text;
-  v_expires_at timestamptz;
-begin
-  if not public.is_admin() then
-    raise exception 'Nur Admins duerfen den Testaccount oeffnen.';
-  end if;
-
-  perform public.admin_cleanup_expired_test_accounts();
-
-  v_seed := substr(replace(gen_random_uuid()::text, '-', ''), 1, 10);
-  v_session_scope := 'test-account-' || v_seed;
-  v_email := 'testaccount+' || v_seed || '@ragebaiters.local';
-  v_username := 'testaccount-' || substr(v_seed, 1, 6);
-  v_password := substr(
-    replace(gen_random_uuid()::text, '-', '') ||
-    replace(gen_random_uuid()::text, '-', ''),
-    1,
-    28
-  ) || 'A9!';
-  v_expires_at := now() + interval '5 minutes';
-
-  insert into public.test_account_sessions (
-    session_scope,
-    email,
-    username,
-    role,
-    created_by,
-    expires_at
-  )
-  values (
-    v_session_scope,
-    v_email,
-    v_username,
-    'observer',
-    auth.uid(),
-    v_expires_at
-  );
-
-  return query
-  select
-    v_session_scope,
-    v_email,
-    v_password,
-    v_username,
-    'observer'::text,
-    v_expires_at;
-end;
-$$;
-
-create or replace function public.admin_rotate_test_account_access(
-  p_previous_session_scope text default null
-)
-returns table (
-  session_scope text,
-  email text,
-  password text,
-  username text,
-  role text,
-  expires_at timestamptz
-)
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  if not public.is_admin() then
-    raise exception 'Nur Admins duerfen Testaccounts rotieren.';
-  end if;
-
-  perform public.admin_cleanup_expired_test_accounts(p_previous_session_scope);
-
-  return query
-  select *
-  from public.admin_get_test_account_access();
-end;
-$$;
-
-create or replace function public.admin_prepare_test_account(
-  p_email text,
-  p_username text default 'testaccount-preview',
-  p_role text default 'observer'
-)
-returns boolean
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_email text;
-  v_username text;
-  v_role text;
-  v_user_id uuid;
-begin
-  if not public.is_admin() then
-    raise exception 'Nur Admins duerfen den Testaccount vorbereiten.';
-  end if;
-
-  v_email := lower(trim(coalesce(p_email, '')));
-  v_username := trim(coalesce(p_username, 'testaccount-preview'));
-  v_role := 'observer';
-
-  if v_email = '' then
-    raise exception 'Die Testaccount-E-Mail fehlt.';
-  end if;
-
-  select id
-  into v_user_id
-  from auth.users
-  where lower(email::text) = v_email
-  order by created_at desc
-  limit 1;
-
-  if v_user_id is null then
-    return false;
-  end if;
-
-  if exists (
-    select 1
-    from public.profiles
-    where username = v_username
-      and id <> v_user_id
-  ) then
-    v_username := left(v_username || '-' || substr(replace(v_user_id::text, '-', ''), 1, 6), 32);
-  end if;
-
-  update auth.users
-  set email_confirmed_at = coalesce(email_confirmed_at, now()),
-      raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object(
-        'username', v_username,
-        'is_test_account', true
-      ),
-      updated_at = now()
-  where id = v_user_id;
-
-  insert into public.profiles (id, username, role)
-  values (v_user_id, v_username, v_role)
-  on conflict (id) do update
-    set username = excluded.username,
-        role = excluded.role;
-
-  update public.test_account_sessions
-  set auth_user_id = v_user_id,
-      username = v_username,
-      role = v_role
-  where lower(email) = v_email;
-
-  return true;
-end;
-$$;
-
-create or replace function public.resolve_login_email(p_identifier text)
-returns text
-language plpgsql
-security definer
-set search_path = public
-stable
-as $$
-declare
-  v_identifier text := trim(coalesce(p_identifier, ''));
-  v_email text;
-begin
-  if v_identifier = '' then
-    return null;
-  end if;
-
-  if position('@' in v_identifier) > 0 then
-    return lower(v_identifier);
-  end if;
-
-  select lower(u.email::text)
-  into v_email
-  from public.profiles p
-  join auth.users u on u.id = p.id
-  where lower(p.username) = lower(v_identifier)
-  order by u.created_at desc
-  limit 1;
-
-  return v_email;
-end;
-$$;
-
-create or replace function public.admin_update_user(
-  p_user_id uuid,
-  p_username text,
-  p_role text
-)
-returns boolean
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_username text;
-  v_role text;
-begin
-  if not public.is_admin() then
-    raise exception 'Nur Admins duerfen Benutzer bearbeiten.';
-  end if;
-
-  v_username := trim(coalesce(p_username, ''));
-  v_role := trim(coalesce(p_role, 'member'));
-
-  if v_username = '' then
-    raise exception 'Der Benutzername darf nicht leer sein.';
-  end if;
-
-  if length(v_username) < 3 or length(v_username) > 32 then
-    raise exception 'Der Benutzername muss zwischen 3 und 32 Zeichen lang sein.';
-  end if;
-
-  if v_username !~ '^[A-Za-z0-9_.-]+$' then
-    raise exception 'Der Benutzername enthaelt ungueltige Zeichen.';
-  end if;
-
-  if v_role not in ('observer', 'member', 'admin') then
-    raise exception 'Ungueltige Rolle.';
-  end if;
-
-  if exists (
-    select 1
-    from public.profiles
-    where lower(username) = lower(v_username)
-      and id <> p_user_id
-  ) then
-    raise exception 'Dieser Benutzername ist bereits vergeben.';
-  end if;
-
-  insert into public.profiles (id, username, role)
-  values (p_user_id, v_username, v_role)
-  on conflict (id) do update
-    set username = excluded.username,
-        role = excluded.role;
-
-  return true;
-end;
-$$;
-
-create or replace function public.admin_delete_user(p_user_id uuid)
-returns boolean
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  if not public.is_admin() then
-    raise exception 'Nur Admins duerfen Benutzer loeschen.';
-  end if;
-
-  if p_user_id = auth.uid() then
-    raise exception 'Du kannst deinen eigenen Admin-Account hier nicht loeschen.';
-  end if;
-
-  if not public.hard_delete_user_account(p_user_id) then
-    raise exception 'Benutzer wurde im Auth-System nicht gefunden oder konnte nicht geloescht werden.';
-  end if;
-
-  return true;
-end;
-$$;
-
-grant execute on function public.resolve_login_email(text) to anon, authenticated;
-grant execute on function public.admin_cleanup_expired_test_accounts(text) to authenticated;
-grant execute on function public.admin_get_test_account_access() to authenticated;
-grant execute on function public.admin_rotate_test_account_access(text) to authenticated;
-grant execute on function public.admin_prepare_test_account(text, text, text) to authenticated;
-grant execute on function public.admin_delete_user(uuid) to authenticated;
 create or replace function public.admin_mark_photo_as_troll(p_photo_id bigint)
 returns boolean
 language plpgsql
