@@ -63,6 +63,7 @@ const inviteUsedCount = document.getElementById('inviteUsedCount');
 const inviteTotalCount = document.getElementById('inviteTotalCount');
 
 const bannerRadios = [...document.querySelectorAll('input[name="homepageBanner"]')];
+const bannerAccessHint = document.getElementById('bannerAccessHint');
 const bannerImageInput = document.getElementById('bannerImageInput');
 const bannerCustomOptionPreview = document.getElementById('bannerCustomOptionPreview');
 const bannerPreview = document.getElementById('bannerPreview');
@@ -137,6 +138,8 @@ if (!state.isAdmin) {
   });
 }
 
+syncHomepageAccessState();
+
 if (!state.canUpload && !state.canViewUsers) {
   memberUpNodes.forEach(node => {
     node.hidden = true;
@@ -157,14 +160,11 @@ mainSection.hidden = false;
 if (state.canUpload) await loadMyPhotos();
 if (state.canViewUsers) await loadUsers();
 await loadTeamMembers();
-if (state.isAdmin) {
-  await Promise.all([
-    loadPendingReviews(),
-    loadInvites(),
-    loadBannerSetting(),
-    loadInstagramSettings()
-  ]);
-}
+await Promise.all([
+  loadBannerSetting(),
+  loadInstagramSettings(),
+  ...(state.isAdmin ? [loadPendingReviews(), loadInvites()] : [])
+]);
 
 function setupNavigation() {
   tabButtons.forEach(btn => {
@@ -183,10 +183,10 @@ function setupNavigation() {
 }
 
 function normalizeView(view) {
-  const allowed = ['welcome', 'team'];
+  const allowed = ['welcome', 'team', 'banner'];
   if (state.canUpload) allowed.push('uploads');
   if (state.canViewUsers) allowed.push('users');
-  if (state.isAdmin) allowed.push('invites', 'banner');
+  if (state.isAdmin) allowed.push('invites');
   return allowed.includes(view) ? view : 'welcome';
 }
 
@@ -234,6 +234,19 @@ function setupUploads() {
 }
 
 function setupAdminActions() {
+  bannerRadios.forEach(radio => {
+    radio.addEventListener('change', () => updateBannerPreview(radio.value));
+  });
+
+  bannerImageInput?.addEventListener('change', async event => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    await uploadBannerImage(file);
+  });
+
+  saveBannerBtn.addEventListener('click', () => saveBannerSetting());
+
   if (!state.isAdmin) return;
 
   if (openTestAccountBtn) {
@@ -257,18 +270,6 @@ function setupAdminActions() {
 
   refreshInvitesBtn.addEventListener('click', () => loadInvites());
 
-  bannerRadios.forEach(radio => {
-    radio.addEventListener('change', () => updateBannerPreview(radio.value));
-  });
-
-  bannerImageInput?.addEventListener('change', async event => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    await uploadBannerImage(file);
-  });
-
-  saveBannerBtn.addEventListener('click', () => saveBannerSetting());
   saveTeamMembersBtn?.addEventListener('click', () => saveTeamMembers());
   saveInstagramBtn.addEventListener('click', () => saveInstagramSettings());
 
@@ -282,6 +283,40 @@ function setupAdminActions() {
   ].forEach(field => {
     field?.addEventListener('input', () => updateInstagramPreview());
   });
+}
+
+function syncHomepageAccessState() {
+  const isReadOnly = !state.isAdmin;
+  const bannerUploadTrigger = document.querySelector('[for="bannerImageInput"]');
+  const homepageControls = [
+    ...bannerRadios,
+    bannerImageInput,
+    saveBannerBtn,
+    instagramPostUrlInput,
+    instagramImageUrlInput,
+    instagramTitleInput,
+    instagramUsernameInput,
+    instagramPostedAtInput,
+    instagramCaptionInput,
+    saveInstagramBtn
+  ];
+
+  if (bannerAccessHint) {
+    bannerAccessHint.hidden = !isReadOnly;
+  }
+
+  homepageControls.forEach(control => {
+    if (control) control.disabled = isReadOnly;
+  });
+
+  bannerRadios.forEach(radio => {
+    radio.closest('.banner-choice')?.classList.toggle('is-disabled', isReadOnly);
+  });
+
+  if (bannerUploadTrigger) {
+    bannerUploadTrigger.classList.toggle('is-disabled', isReadOnly);
+    bannerUploadTrigger.setAttribute('aria-disabled', String(isReadOnly));
+  }
 }
 
 async function openTestAccountSession() {
