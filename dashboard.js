@@ -1219,7 +1219,7 @@ async function uploadTeamMemberImage(memberId, file) {
 
   const member = state.teamMembers.find(entry => entry.id === memberId);
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-  const key = `team-members/${slugify(member?.name || memberId)}-${Date.now()}.${ext}`;
+  const key = `${state.user?.id || 'team'}/team-members/${slugify(member?.name || memberId)}-${Date.now()}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
     .from('photos')
@@ -1231,7 +1231,7 @@ async function uploadTeamMemberImage(memberId, file) {
   }
 
   const previousPath = resolveStoragePathFromPublicUrl(member?.image_url || '');
-  if (previousPath?.startsWith('team-members/') && previousPath !== key) {
+  if (isTeamMemberStoragePath(previousPath) && previousPath !== key) {
     await supabase.storage.from('photos').remove([previousPath]).catch(() => {});
   }
 
@@ -1291,7 +1291,7 @@ function resolveTeamMemberImage(path) {
   if (!normalized) return 'images/logo.png';
   if (/^https?:\/\//i.test(normalized)) return normalized;
 
-  if (normalized.startsWith('team-members/')) {
+  if (isTeamMemberStoragePath(normalized)) {
     const { data: publicData } = supabase.storage.from('photos').getPublicUrl(normalized);
     const cacheBust = `t=${Date.now()}`;
     const separator = publicData.publicUrl.includes('?') ? '&' : '?';
@@ -1304,7 +1304,7 @@ function resolveTeamMemberImage(path) {
 function resolveStoragePathFromPublicUrl(url) {
   const normalized = String(url || '').trim();
   if (!normalized) return '';
-  if (normalized.startsWith('team-members/')) return normalized;
+  if (isTeamMemberStoragePath(normalized)) return normalized;
   if (!window.SUPABASE_URL) return '';
 
   try {
@@ -1314,6 +1314,11 @@ function resolveStoragePathFromPublicUrl(url) {
   } catch {
     return '';
   }
+}
+
+function isTeamMemberStoragePath(path) {
+  const normalized = String(path || '').trim();
+  return normalized.startsWith('team-members/') || normalized.includes('/team-members/');
 }
 
 function slugify(value) {

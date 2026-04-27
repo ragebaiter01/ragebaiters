@@ -184,12 +184,17 @@
       if (!normalized) return 'images/logo.png';
       if (/^https?:\/\//i.test(normalized)) return normalized;
 
-      if (normalized.startsWith('team-members/')) {
+      if (isTeamMemberStoragePath(normalized)) {
         const { data: publicData } = supabase.storage.from('photos').getPublicUrl(normalized);
         return publicData.publicUrl;
       }
 
       return normalized;
+    }
+
+    function isTeamMemberStoragePath(path) {
+      const normalized = String(path || '').trim();
+      return normalized.startsWith('team-members/') || normalized.includes('/team-members/');
     }
 
     function normalizeTeamMembers(rawMembers) {
