@@ -1223,7 +1223,7 @@ async function uploadTeamMemberImage(memberId, file) {
 
   const { error: uploadError } = await supabase.storage
     .from('photos')
-    .upload(key, file, { cacheControl: '3600', contentType: file.type, upsert: true });
+    .upload(key, file, { cacheControl: '3600', contentType: file.type });
 
   if (uploadError) {
     setMessage(teamMembersMessage, `Team-Bild konnte nicht hochgeladen werden: ${uploadError.message}`, 'error');

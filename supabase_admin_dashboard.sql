@@ -499,6 +499,68 @@ end;
 $$;
 
 -- ============================================================
+-- Storage-RLS fuer Team-Bilder im Bucket "photos"
+-- ============================================================
+
+insert into storage.buckets (id, name, public)
+values ('photos', 'photos', true)
+on conflict (id) do update
+set public = excluded.public;
+
+drop policy if exists "photos_public_read" on storage.objects;
+create policy "photos_public_read"
+on storage.objects
+for select
+to anon, authenticated
+using (bucket_id = 'photos');
+
+drop policy if exists "photos_user_insert_own_or_admin" on storage.objects;
+create policy "photos_user_insert_own_or_admin"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'photos'
+  and (
+    (storage.foldername(name))[1] = auth.uid()::text
+    or public.is_admin()
+  )
+);
+
+drop policy if exists "photos_user_update_own_or_admin" on storage.objects;
+create policy "photos_user_update_own_or_admin"
+on storage.objects
+for update
+to authenticated
+using (
+  bucket_id = 'photos'
+  and (
+    (storage.foldername(name))[1] = auth.uid()::text
+    or public.is_admin()
+  )
+)
+with check (
+  bucket_id = 'photos'
+  and (
+    (storage.foldername(name))[1] = auth.uid()::text
+    or public.is_admin()
+  )
+);
+
+drop policy if exists "photos_user_delete_own_or_admin" on storage.objects;
+create policy "photos_user_delete_own_or_admin"
+on storage.objects
+for delete
+to authenticated
+using (
+  bucket_id = 'photos'
+  and (
+    (storage.foldername(name))[1] = auth.uid()::text
+    or public.is_admin()
+  )
+);
+
+-- ============================================================
 -- Homepage Instagram Card (Design vorbereitet fuer Live-Sync)
 -- ============================================================
 
