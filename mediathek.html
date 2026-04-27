@@ -122,7 +122,7 @@
             const photoId = Number(fig?.dataset.id);
             const photoPath = fig?.dataset.path || '';
             if (!photoId) return;
-            if (!confirm('Dieses Bild wirklich aus der Mediathek loeschen?')) return;
+            if (!confirm('Dieses Bild wirklich aus der Mediathek löschen?')) return;
 
             if (photoPath && !String(photoPath).startsWith('__local__/')) {
               const { error: storageError } = await supabase.storage.from('photos').remove([photoPath]);
@@ -135,7 +135,7 @@
               p_photo_id: photoId
             });
             if (deleteError) return alert(deleteError.message);
-            if (!deleted) return alert('Bild konnte nicht geloescht werden.');
+            if (!deleted) return alert('Bild konnte nicht gelöscht werden.');
             fig.remove();
             if (!grid.querySelector('.photo-item')) {
               gallery.innerHTML = '<div class="card" style="text-align:center; color: var(--muted);">Es wurden noch keine Fotos hochgeladen.</div>';

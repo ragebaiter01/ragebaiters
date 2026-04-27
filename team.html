@@ -63,7 +63,7 @@
       <h2 style="margin: 10px 0 40px;">Die Einheit</h2>
 
       <div id="teamLeaderSection">
-        <h3 style="color: var(--accent); margin-bottom: 20px;">Teamfuehrung</h3>
+        <h3 style="color: var(--accent); margin-bottom: 20px;">Teamführung</h3>
         <div id="teamLeaderGrid" class="member-grid" style="grid-template-columns: 1fr;">
           <div class="card" style="text-align:center; color: var(--muted);">Team wird geladen...</div>
         </div>
@@ -101,13 +101,13 @@
     const modalClose = document.querySelector('.modal-close');
 
     const fallbackTeamMembers = [
-      { id: 'ben', name: 'Yotzek (Ben)', role: 'Teamfuehrer', description: 'Ben koordiniert die Truppe und bewahrt selbst im Gefecht einen kuehlen Kopf.', image_url: 'images/benf.png', is_leader: true, sort_order: 10 },
-      { id: 'jason', name: 'sneiper0 (Jason)', role: 'Sniper', description: 'Praezisionsschuetze der Ragebaiters.', image_url: 'images/logo.png', is_leader: false, sort_order: 20 },
-      { id: 'michael', name: 'MundMbrothers (Michael)', role: 'Medic', description: 'Sorgt fuer die Einsatzfaehigkeit des Teams.', image_url: 'images/michi2.png', is_leader: false, sort_order: 30 },
-      { id: 'nils', name: 'Disccave (Nils)', role: 'Breacher / OG', description: 'Einer der OGs. Experte fuer Improvisation.', image_url: 'images/nils.png', is_leader: false, sort_order: 40 },
+      { id: 'ben', name: 'Yotzek (Ben)', role: 'Teamführer', description: 'Ben koordiniert die Truppe und bewahrt selbst im Gefecht einen kühlen Kopf.', image_url: 'images/benf.png', is_leader: true, sort_order: 10 },
+      { id: 'jason', name: 'sneiper0 (Jason)', role: 'Sniper', description: 'Präzisionsschütze der Ragebaiters.', image_url: 'images/logo.png', is_leader: false, sort_order: 20 },
+      { id: 'michael', name: 'MundMbrothers (Michael)', role: 'Medic', description: 'Sorgt für die Einsatzfähigkeit des Teams.', image_url: 'images/michi2.png', is_leader: false, sort_order: 30 },
+      { id: 'nils', name: 'Disccave (Nils)', role: 'Breacher / OG', description: 'Einer der OGs. Experte für Improvisation.', image_url: 'images/nils.png', is_leader: false, sort_order: 40 },
       { id: 'nathan', name: 'Nathan Goldstein (Nathan)', role: 'Support', description: 'Gibt Feuerschutz mit hohem Munitionsdurchsatz.', image_url: 'images/nathan.png', is_leader: false, sort_order: 50 },
-      { id: 'riccardo', name: 'Gemeral Richard (Riccardo)', role: 'Breacher', description: 'Spezialist fuer CQB.', image_url: 'images/riccardo.png', is_leader: false, sort_order: 60 },
-      { id: 'wolfgang', name: 'Wolfgang', role: 'Techniker', description: 'Haelt die Markierer am Laufen.', image_url: 'images/wolfgang.png', is_leader: false, sort_order: 70 }
+      { id: 'riccardo', name: 'Gemeral Richard (Riccardo)', role: 'Breacher', description: 'Spezialist für CQB.', image_url: 'images/riccardo.png', is_leader: false, sort_order: 60 },
+      { id: 'wolfgang', name: 'Wolfgang', role: 'Techniker', description: 'Hält die Markierer am Laufen.', image_url: 'images/wolfgang.png', is_leader: false, sort_order: 70 }
     ];
 
     let teamMembers = fallbackTeamMembers;
@@ -138,7 +138,7 @@
 
       leaderGrid.innerHTML = leaders.length
         ? leaders.map(member => memberCardMarkup(member, true)).join('')
-        : '<div class="card" style="text-align:center; color: var(--muted);">Noch keine Teamfuehrung hinterlegt.</div>';
+        : '<div class="card" style="text-align:center; color: var(--muted);">Noch keine Teamführung hinterlegt.</div>';
 
       operatorGrid.innerHTML = operators.length
         ? operators.map(member => memberCardMarkup(member, false)).join('')
@@ -161,7 +161,7 @@
             alt="${escapeHtmlAttr(member.name || 'Teammitglied')}"
             style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.16);margin:0 auto 12px;display:block;"
             onerror="this.src='images/logo.png'">
-          <div class="role-badge">${escapeHtml(member.role || (isLeader ? 'Teamfuehrung' : 'Operator'))}</div>
+          <div class="role-badge">${escapeHtml(member.role || (isLeader ? 'Teamführung' : 'Operator'))}</div>
           <div style="${isLeader ? 'font-size: 1.8rem; font-weight: 900;' : 'font-weight:800;'}">${escapeHtml(member.name || 'Unbekannt')}</div>
         </div>`;
     }

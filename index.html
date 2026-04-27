@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Die Ragebaiters | Airsoft Team</title>
+  <title>die Ragebaiters | Airsoft Team</title>
   <link rel="icon" type="image/png" href="images/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,7 +18,7 @@
   <header class="container">
     <nav class="nav">
       <div class="nav-brand">
-        <div class="nav-title">Die Ragebaiters</div>
+        <div class="nav-title">die Ragebaiters</div>
       </div>
       <button class="nav-toggle" type="button" aria-label="Menü" aria-expanded="false">
         <span class="nav-toggle-bar"></span>
@@ -119,9 +119,9 @@
         <div>
           <span class="eyebrow">Instagram</span>
           <h2 style="margin: 10px 0 4px;">Neuester Instagram-Beitrag</h2>
-          <p style="color: var(--muted); margin: 0;">Der Bereich ist jetzt im Design der Seite vorbereitet und kann spaeter direkt an eine Live-Instagram-Datenquelle angebunden werden.</p>
+          <p style="color: var(--muted); margin: 0;">Der Bereich ist jetzt im Design der Seite vorbereitet und kann später direkt an eine Live-Instagram-Datenquelle angebunden werden.</p>
         </div>
-        <a href="https://www.instagram.com/die_ragebaiters/" target="_blank" rel="noopener">Instagram oeffnen</a>
+        <a href="https://www.instagram.com/die_ragebaiters/" target="_blank" rel="noopener">Instagram öffnen</a>
       </div>
       <div id="instagram-latest">
         <article class="card instagram-post-card">
@@ -180,7 +180,7 @@
           <div class="latest-media-copy">
             <span class="latest-media-label">Zuletzt hochgeladen</span>
             <h3>${escapeHtml(latestPhoto.title || 'Neuer Mediathek-Post')}</h3>
-            ${latestPhoto.caption ? `<p>${escapeHtml(latestPhoto.caption)}</p>` : '<p>In der Mediathek ist ein neuer Beitrag verfuegbar.</p>'}
+            ${latestPhoto.caption ? `<p>${escapeHtml(latestPhoto.caption)}</p>` : '<p>In der Mediathek ist ein neuer Beitrag verfügbar.</p>'}
             <div class="latest-media-meta">
               <span>von ${escapeHtml(latestPhoto.author || 'anonym')}</span>
               <span>${formatDate(latestPhoto.uploaded_at)}</span>
@@ -227,7 +227,7 @@
       console.error('[Ragebaiters] Instagram-Post konnte nicht geladen werden:', error);
       instagramLatest.innerHTML = buildInstagramFallbackCard({
         title: 'Instagram-Verbindung wird vorbereitet',
-        copy: 'Das Layout fuer den neuesten Instagram-Beitrag steht bereits. Die Live-Anbindung kann jetzt spaeter direkt an Meta oder eine Supabase-Synchronisierung angeschlossen werden.'
+        copy: 'Das Layout für den neuesten Instagram-Beitrag steht bereits. Die Live-Anbindung kann jetzt später direkt an Meta oder eine Supabase-Synchronisierung angeschlossen werden.'
       });
       return;
     }
@@ -250,7 +250,7 @@
 
     const primaryAction = post.post_url
       ? `<a href="${escapeHtmlAttr(post.post_url)}" target="_blank" rel="noopener">Beitrag ansehen</a>`
-      : `<a href="${instagramProfileUrl}" target="_blank" rel="noopener">Profil oeffnen</a>`;
+      : `<a href="${instagramProfileUrl}" target="_blank" rel="noopener">Profil öffnen</a>`;
 
     instagramLatest.innerHTML = `
       <article class="card instagram-post-card">
@@ -269,7 +269,7 @@
             </div>
             <div class="instagram-post-actions">
               ${primaryAction}
-              <a class="instagram-post-secondary" href="${instagramProfileUrl}" target="_blank" rel="noopener">Profil oeffnen</a>
+              <a class="instagram-post-secondary" href="${instagramProfileUrl}" target="_blank" rel="noopener">Profil öffnen</a>
             </div>
           </div>
         </div>
@@ -296,7 +296,7 @@
               <span>Wartet auf Live-Daten</span>
             </div>
             <div class="instagram-post-actions">
-              <a href="${instagramProfileUrl}" target="_blank" rel="noopener">Instagram oeffnen</a>
+              <a href="${instagramProfileUrl}" target="_blank" rel="noopener">Instagram öffnen</a>
             </div>
           </div>
         </div>

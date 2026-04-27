@@ -6,7 +6,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY ||
     window.SUPABASE_URL.includes('DEIN-PROJEKT')) {
-  console.warn('[Ragebaiters] Bitte config.js mit deinen Supabase-Daten fuellen.');
+  console.warn('[Ragebaiters] Bitte config.js mit deinen Supabase-Daten füllen.');
 }
 
 const SESSION_PARAM = 'session';
@@ -28,7 +28,7 @@ const handoffReady = consumeScopedLoginHandoff().catch(error => {
   console.error('[Ragebaiters] Scoped login handoff fehlgeschlagen:', error);
 });
 
-// Macht den aktuellen Seiten-Client auch ohne Import verfuegbar
+// Macht den aktuellen Seiten-Client auch ohne Import verfügbar
 window.supabase = supabase;
 
 /* ----- Session-Helfer ----- */
@@ -183,7 +183,7 @@ const ICON_LOGOUT = `
     <line x1="21" y1="12" x2="9" y2="12"/>
   </svg>`;
 
-/* ----- Mobiles Menue ----- */
+/* ----- Mobiles Menü ----- */
 function setupMobileNav() {
   const nav = document.querySelector('.nav');
   const navLinks = nav?.querySelector('.nav-links');
@@ -207,7 +207,7 @@ function setupMobileNav() {
   const toggle = document.createElement('button');
   toggle.type = 'button';
   toggle.className = 'nav-toggle';
-  toggle.setAttribute('aria-label', 'Menue oeffnen');
+  toggle.setAttribute('aria-label', 'Menü öffnen');
   toggle.setAttribute('aria-expanded', 'false');
   toggle.setAttribute('aria-controls', 'mobile-navigation');
   toggle.innerHTML = `
@@ -223,14 +223,14 @@ function setupMobileNav() {
     nav.classList.remove('is-open');
     navLinks.classList.remove('is-open');
     toggle.setAttribute('aria-expanded', 'false');
-    toggle.setAttribute('aria-label', 'Menue oeffnen');
+    toggle.setAttribute('aria-label', 'Menü öffnen');
   };
 
   const openMenu = () => {
     nav.classList.add('is-open');
     navLinks.classList.add('is-open');
     toggle.setAttribute('aria-expanded', 'true');
-    toggle.setAttribute('aria-label', 'Menue schliessen');
+    toggle.setAttribute('aria-label', 'Menü schließen');
   };
 
   toggle.addEventListener('click', () => {
@@ -460,7 +460,7 @@ function applyScopedLinks() {
       url.searchParams.delete(HANDOFF_PARAM);
       link.setAttribute('href', `${url.pathname}${url.search}${url.hash}`);
     } catch {
-      // Ignoriert ungueltige oder externe Links.
+      // Ignoriert ungültige oder externe Links.
     }
   });
 }
