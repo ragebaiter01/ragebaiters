@@ -183,6 +183,16 @@ const ICON_LOGOUT = `
     <line x1="21" y1="12" x2="9" y2="12"/>
   </svg>`;
 
+const ICON_SECRET_GAME = `
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <rect x="3" y="8" width="18" height="10" rx="5"/>
+    <path d="M8 13h4"/>
+    <path d="M10 11v4"/>
+    <circle cx="16.5" cy="12" r="1.2" fill="currentColor" stroke="none"/>
+    <circle cx="18.8" cy="14.5" r="1.2" fill="currentColor" stroke="none"/>
+  </svg>`;
+
 /* ----- Mobiles Menü ----- */
 function setupMobileNav() {
   const nav = document.querySelector('.nav');
@@ -280,6 +290,16 @@ export async function renderAuthNav(active = '') {
         <span class="sr-only">Interner Login</span>
       </a>`;
     document.body.appendChild(wrap);
+
+    const secretGame = document.createElement('div');
+    secretGame.dataset.authLink = '1';
+    secretGame.className = 'secret-game-wrap';
+    secretGame.innerHTML = `
+      <a class="secret-game-link" href="${escapeAttr(buildScopedUrl('doodle-jason.html'))}" title="Geheimes Spiel" aria-label="Geheimes Spiel oeffnen">
+        ${ICON_SECRET_GAME}
+        <span class="sr-only">Geheimes Spiel oeffnen</span>
+      </a>`;
+    document.body.appendChild(secretGame);
 
     const logout = document.createElement('a');
     logout.href = '#';

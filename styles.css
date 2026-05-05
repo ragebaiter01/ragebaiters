@@ -1038,6 +1038,13 @@ h2 { font-size: clamp(1.8rem, 8vw, 3rem); font-weight: 900; line-height: 1.2; }
   z-index: 1200;
 }
 
+.secret-game-wrap {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 1200;
+}
+
 .floating-login {
   width: 44px;
   height: 44px;
@@ -1064,6 +1071,175 @@ h2 { font-size: clamp(1.8rem, 8vw, 3rem); font-weight: 900; line-height: 1.2; }
   background: rgba(183,255,60,0.12);
   box-shadow: 0 10px 30px rgba(0,0,0,0.45), 0 0 18px rgba(183,255,60,0.16);
   filter: none;
+}
+
+.secret-game-link {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 214, 10, 0.08);
+  border: 1px solid rgba(255, 214, 10, 0.16);
+  color: #ffd86a !important;
+  opacity: 0.28;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+}
+
+.secret-game-link svg {
+  width: 18px;
+  height: 18px;
+}
+
+.secret-game-link:hover {
+  opacity: 0.9;
+  color: #fff1b3 !important;
+  background: rgba(255, 214, 10, 0.14);
+  border-color: rgba(255, 214, 10, 0.35);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.4), 0 0 22px rgba(255, 214, 10, 0.14);
+  filter: none;
+}
+
+.page-doodle-jason .game-shell {
+  display: grid;
+  gap: 26px;
+}
+
+.page-doodle-jason .game-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: end;
+}
+
+.page-doodle-jason .game-head p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  max-width: 700px;
+}
+
+.page-doodle-jason .game-head a {
+  width: auto;
+  padding-inline: 20px;
+}
+
+.page-doodle-jason .game-layout {
+  display: grid;
+  gap: 22px;
+}
+
+.page-doodle-jason .game-board-card {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+}
+
+.page-doodle-jason .game-canvas-wrap {
+  width: 100%;
+  display: grid;
+  justify-items: center;
+}
+
+.page-doodle-jason .game-canvas {
+  width: min(100%, 400px);
+  height: auto;
+  display: block;
+  border-radius: 26px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: linear-gradient(180deg, #89d7ff 0%, #dff5ff 100%);
+  box-shadow: 0 28px 60px rgba(0,0,0,0.28);
+}
+
+.page-doodle-jason .game-touch-controls {
+  width: min(100%, 400px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.page-doodle-jason .game-touch-btn {
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+  border-radius: 18px;
+  padding: 16px 18px;
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.page-doodle-jason .game-touch-btn:active,
+.page-doodle-jason .game-touch-btn.is-active {
+  background: rgba(183,255,60,0.16);
+  border-color: rgba(183,255,60,0.34);
+}
+
+.page-doodle-jason .game-side-card {
+  display: grid;
+  gap: 18px;
+}
+
+.page-doodle-jason .game-side-card h3,
+.page-doodle-jason .game-side-card p {
+  margin: 0;
+}
+
+.page-doodle-jason .game-rules {
+  display: grid;
+  gap: 12px;
+}
+
+.page-doodle-jason .game-rule {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.page-doodle-jason .game-rule-badge {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(183,255,60,0.12);
+  color: var(--accent);
+  font-weight: 900;
+}
+
+.page-doodle-jason .game-rule-copy strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.page-doodle-jason .game-rule-copy span {
+  color: var(--muted);
+}
+
+.page-doodle-jason .game-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--muted);
+}
+
+.page-doodle-jason .game-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ffd86a;
+  box-shadow: 0 0 12px rgba(255,216,106,0.45);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1096,8 +1272,25 @@ h2 { font-size: clamp(1.8rem, 8vw, 3rem); font-weight: 900; line-height: 1.2; }
     bottom: 12px;
   }
 
+  .secret-game-wrap {
+    left: 12px;
+    bottom: 12px;
+  }
+
   .floating-login {
     width: 40px;
     height: 40px;
+  }
+
+  .secret-game-link {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (min-width: 960px) {
+  .page-doodle-jason .game-layout {
+    grid-template-columns: minmax(0, 430px) minmax(0, 1fr);
+    align-items: start;
   }
 }

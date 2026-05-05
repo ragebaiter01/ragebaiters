@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Doodle Jason | die Ragebaiters</title>
+  <link rel="icon" type="image/png" href="images/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="./styles.css?v=2026-05-05-1">
+</head>
+<body class="page-doodle-jason">
+
+  <div class="top-banner">
+    <img src="images/banner2.png" alt="die Ragebaiters Banner" />
+  </div>
+
+  <header class="container">
+    <nav class="nav">
+      <div class="nav-brand">
+        <div class="nav-title">die Ragebaiters</div>
+      </div>
+      <button class="nav-toggle" type="button" aria-label="Menue" aria-expanded="false">
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+      </button>
+      <div class="nav-links">
+        <a href="index.html">Startseite</a>
+        <a href="team.html">Team</a>
+        <a href="mediathek.html">Mediathek</a>
+        <a href="impressum.html">Impressum</a>
+        <a class="social-icon" href="https://www.youtube.com/@RagebaitersAS" target="_blank" rel="noopener" aria-label="YouTube" title="YouTube">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M23.498 6.186a2.999 2.999 0 0 0-2.112-2.122C19.505 3.5 12 3.5 12 3.5s-7.505 0-9.386.564A2.999 2.999 0 0 0 .502 6.186C0 8.074 0 12 0 12s0 3.926.502 5.814a2.999 2.999 0 0 0 2.112 2.122C4.495 20.5 12 20.5 12 20.5s7.505 0 9.386-.564a2.999 2.999 0 0 0 2.112-2.122C24 15.926 24 12 24 12s0-3.926-.502-5.814zM9.75 15.568V8.432L15.818 12 9.75 15.568z"/>
+          </svg>
+        </a>
+        <a class="social-icon" href="https://www.instagram.com/die_ragebaiters/" target="_blank" rel="noopener" aria-label="Instagram" title="Instagram">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+          </svg>
+        </a>
+      </div>
+    </nav>
+    <div class="nav-backdrop" aria-hidden="true"></div>
+  </header>
+
+  <main class="container">
+    <section class="section game-shell">
+      <div class="game-head">
+        <div>
+          <span class="eyebrow">Geheimer Bereich</span>
+          <h1 style="margin: 12px 0 0;">Doodle Jason</h1>
+          <p>Ein verstecktes Mini-Spiel nur fuer eingeloggte Mitglieder. Spring so hoch wie moeglich und knack den Rekord.</p>
+        </div>
+        <a href="index.html">Zur Startseite</a>
+      </div>
+
+      <div class="game-layout">
+        <article class="card game-board-card">
+          <div class="game-canvas-wrap">
+            <canvas id="gameCanvas" class="game-canvas" width="400" height="700" aria-label="Doodle Jason Spielbereich"></canvas>
+          </div>
+          <div class="game-touch-controls" aria-label="Touch-Steuerung">
+            <button type="button" class="game-touch-btn" data-touch="left">Links</button>
+            <button type="button" class="game-touch-btn" data-touch="right">Rechts</button>
+          </div>
+        </article>
+
+        <aside class="card game-side-card">
+          <div>
+            <span class="eyebrow">Steuerung</span>
+            <h3 style="margin-top: 8px;">Kurz und fies</h3>
+          </div>
+
+          <div class="game-rules">
+            <div class="game-rule">
+              <div class="game-rule-badge">1</div>
+              <div class="game-rule-copy">
+                <strong>Bewegen</strong>
+                <span>Mit den Pfeiltasten oder den Touch-Buttons links und rechts steuern.</span>
+              </div>
+            </div>
+            <div class="game-rule">
+              <div class="game-rule-badge">2</div>
+              <div class="game-rule-copy">
+                <strong>Starten</strong>
+                <span>Im Menue auf den Button klicken oder `Enter` bzw. `Leertaste` druecken.</span>
+              </div>
+            </div>
+            <div class="game-rule">
+              <div class="game-rule-badge">3</div>
+              <div class="game-rule-copy">
+                <strong>Ueberleben</strong>
+                <span>Normale Plattformen tragen dich, blaue bewegen sich und braune brechen weg.</span>
+              </div>
+            </div>
+            <div class="game-rule">
+              <div class="game-rule-badge">4</div>
+              <div class="game-rule-copy">
+                <strong>Bonus</strong>
+                <span>Federn geben Superspruenge, Jetpacks schieben dich kurz brutal nach oben.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="game-status">
+            <span class="game-status-dot" aria-hidden="true"></span>
+            <span id="gameStatusText">Login wird geprueft...</span>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer container">
+    <div style="font-weight: 800;">die Ragebaiters</div>
+    <div style="font-size: 0.8rem; opacity: 0.6;">Est. 2026 • Doodle Jason</div>
+  </footer>
+
+  <script src="./nav.js?v=2026-04-23-5" defer></script>
+  <script src="./config.js?v=2026-04-23-5"></script>
+  <script type="module" src="./doodle-jason.js?v=2026-05-05-1"></script>
+</body>
+</html>
