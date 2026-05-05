@@ -6,7 +6,7 @@
   <title>Dashboard | die Ragebaiters</title>
   <link rel="icon" type="image/png" href="images/logo.png">
   <link rel="stylesheet" href="./styles.css?v=2026-04-23-6">
-  <link rel="stylesheet" href="./app.css?v=2026-04-23-6">
+  <link rel="stylesheet" href="./app.css?v=2026-05-05-1">
 </head>
 <body class="page-dashboard">
 
@@ -264,6 +264,22 @@
                 </div>
                 <img src="images/banner2.png" alt="Team Banner Vorschau">
               </label>
+
+              <div class="card banner-choice banner-choice-custom">
+                <label class="banner-choice-select">
+                  <input type="radio" name="homepageBanner" value="custom">
+                  <div class="banner-choice-copy">
+                    <strong>Eigenes Banner</strong>
+                    <span>Lade ein eigenes Banner hoch und nutze es auf der Startseite.</span>
+                  </div>
+                </label>
+                <img id="customBannerChoicePreview" src="images/banner2.png" alt="Eigenes Banner Vorschau">
+                <div class="form-actions">
+                  <input type="file" id="customBannerInput" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+                  <button type="button" class="btn-secondary" id="uploadCustomBannerBtn">Bild hochladen</button>
+                </div>
+                <div class="banner-upload-hint" id="customBannerUploadHint">Noch kein eigenes Banner hochgeladen.</div>
+              </div>
             </div>
 
             <div class="card admin-card">
@@ -417,6 +433,6 @@
 
   <script src="./nav.js?v=2026-04-23-5" defer></script>
   <script src="./config.js?v=2026-04-23-5"></script>
-  <script type="module" src="./dashboard.js?v=2026-04-27-2"></script>
+  <script type="module" src="./dashboard.js?v=2026-05-05-1"></script>
 </body>
 </html>

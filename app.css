@@ -909,8 +909,19 @@
   cursor: pointer;
 }
 
+.banner-choice-custom {
+  align-content: start;
+  cursor: default;
+}
+
 .banner-choice input {
   accent-color: var(--accent);
+}
+
+.banner-choice-select {
+  display: grid;
+  gap: 16px;
+  cursor: pointer;
 }
 
 .banner-choice-copy {
@@ -932,6 +943,15 @@
 
 .banner-preview-wrap {
   margin-top: 18px;
+}
+
+.banner-choice .form-actions {
+  margin-top: 0;
+}
+
+.banner-upload-hint {
+  color: var(--muted);
+  font-size: 0.92rem;
 }
 
 .instagram-admin-hint {
@@ -1246,7 +1266,7 @@
   }
 
   .banner-settings-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

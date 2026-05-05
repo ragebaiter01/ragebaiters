@@ -147,10 +147,19 @@
   const instagramLatest = document.getElementById('instagram-latest');
   const instagramProfileUrl = 'https://www.instagram.com/die_ragebaiters/';
 
-  const { data: bannerVariant } = await supabase.rpc('get_homepage_banner');
+  const [
+    { data: bannerVariant },
+    { data: customBannerPath }
+  ] = await Promise.all([
+    supabase.rpc('get_homepage_banner'),
+    supabase.rpc('get_homepage_banner_custom_path')
+  ]);
   if (bannerVariant === 'sponsor') {
     topBannerImg.src = 'images/banner.png';
     topBannerImg.alt = 'die Ragebaiters Sponsor Banner';
+  } else if (bannerVariant === 'custom' && customBannerPath) {
+    topBannerImg.src = resolvePhotoUrl(customBannerPath);
+    topBannerImg.alt = 'die Ragebaiters eigenes Banner';
   } else {
     topBannerImg.src = 'images/banner2.png';
     topBannerImg.alt = 'die Ragebaiters Team Banner';
@@ -318,4 +327,3 @@
 </script>
 </body>
 </html>
-

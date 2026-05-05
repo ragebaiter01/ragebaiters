@@ -21,6 +21,7 @@ const TEST_ACCOUNT_SCOPE = 'test-account';
 const TEST_ACCOUNT_SCOPE_PREFIX = 'test-account-';
 const TEST_HANDOFF_PREFIX = 'ragebaiters:test-handoff:';
 const TEST_ACCOUNT_LIFETIME_MS = 5 * 60 * 1000;
+const DEFAULT_BANNER_VARIANT = 'team';
 const BANNER_OPTIONS = {
   sponsor: { src: 'images/banner.png', label: 'Sponsor' },
   team: { src: 'images/banner2.png', label: 'Team' }
@@ -66,6 +67,10 @@ const bannerRadios = [...document.querySelectorAll('input[name="homepageBanner"]
 const bannerPreview = document.getElementById('bannerPreview');
 const saveBannerBtn = document.getElementById('saveBannerBtn');
 const bannerMessage = document.getElementById('bannerMessage');
+const customBannerInput = document.getElementById('customBannerInput');
+const uploadCustomBannerBtn = document.getElementById('uploadCustomBannerBtn');
+const customBannerChoicePreview = document.getElementById('customBannerChoicePreview');
+const customBannerUploadHint = document.getElementById('customBannerUploadHint');
 const instagramPostUrlInput = document.getElementById('instagramPostUrlInput');
 const instagramImageUrlInput = document.getElementById('instagramImageUrlInput');
 const instagramTitleInput = document.getElementById('instagramTitleInput');
@@ -97,7 +102,8 @@ const state = {
   teamMembers: [],
   userDirectory: [],
   teamUploadSuccessByMember: {},
-  teamSavePending: false
+  teamSavePending: false,
+  bannerCustomPath: ''
 };
 const currentSessionScope = getCurrentSessionScope();
 const isTemporaryTestSession = currentSessionScope === TEST_ACCOUNT_SCOPE
@@ -276,6 +282,13 @@ function setupAdminActions() {
   });
 
   saveBannerBtn.addEventListener('click', () => saveBannerSetting());
+  uploadCustomBannerBtn?.addEventListener('click', () => customBannerInput?.click());
+  customBannerInput?.addEventListener('change', async () => {
+    const file = customBannerInput.files?.[0];
+    customBannerInput.value = '';
+    if (!file) return;
+    await uploadCustomBanner(file);
+  });
   saveInstagramBtn.addEventListener('click', () => saveInstagramSettings());
 
   [
@@ -798,22 +811,42 @@ async function loadInvites() {
 }
 
 async function loadBannerSetting() {
-  const { data, error } = await supabase.rpc('get_homepage_banner');
+  const [
+    { data: variantData, error: variantError },
+    { data: customPathData, error: customPathError }
+  ] = await Promise.all([
+    supabase.rpc('get_homepage_banner'),
+    supabase.rpc('get_homepage_banner_custom_path')
+  ]);
 
-  if (error) {
-    setMessage(bannerMessage, `Banner-Einstellung konnte nicht geladen werden: ${error.message}`, 'error');
-    updateBannerPreview('team');
-    return;
+  state.bannerCustomPath = normalizeBannerCustomPath(customPathData);
+  syncCustomBannerChoicePreview();
+
+  if (variantError || customPathError) {
+    const errorMessage = variantError?.message || customPathError?.message || 'Unbekannter Fehler';
+    setMessage(bannerMessage, `Banner-Einstellung konnte nicht geladen werden: ${errorMessage}`, 'error');
+  } else {
+    setMessage(bannerMessage, '', 'info', true);
   }
 
-  const variant = data in BANNER_OPTIONS ? data : 'team';
+  const variant = normalizeBannerVariant(variantData, state.bannerCustomPath);
   const radio = bannerRadios.find(entry => entry.value === variant);
   if (radio) radio.checked = true;
   updateBannerPreview(variant);
 }
 
 async function saveBannerSetting() {
-  const selected = bannerRadios.find(radio => radio.checked)?.value || 'team';
+  const rawSelected = String(
+    bannerRadios.find(radio => radio.checked)?.value || DEFAULT_BANNER_VARIANT
+  ).trim().toLowerCase();
+
+  if (rawSelected === 'custom' && !state.bannerCustomPath) {
+    setMessage(bannerMessage, 'Bitte zuerst ein eigenes Banner hochladen.', 'error');
+    return;
+  }
+
+  const selected = normalizeBannerVariant(rawSelected, state.bannerCustomPath);
+
   const { error } = await supabase.rpc('admin_set_homepage_banner', { p_variant: selected });
 
   if (error) {
@@ -822,13 +855,82 @@ async function saveBannerSetting() {
   }
 
   updateBannerPreview(selected);
-  setMessage(bannerMessage, `Startseiten-Banner gespeichert: ${BANNER_OPTIONS[selected].label}`, 'success');
+  setMessage(bannerMessage, `Startseiten-Banner gespeichert: ${bannerLabel(selected)}`, 'success');
 }
 
 function updateBannerPreview(variant) {
-  const config = BANNER_OPTIONS[variant] || BANNER_OPTIONS.team;
+  const normalized = normalizeBannerVariant(variant, state.bannerCustomPath);
+
+  if (normalized === 'custom') {
+    if (state.bannerCustomPath) {
+      bannerPreview.src = resolveBannerPreviewUrl(state.bannerCustomPath);
+      bannerPreview.alt = 'Eigenes Banner Vorschau';
+      return;
+    }
+    bannerPreview.src = BANNER_OPTIONS[DEFAULT_BANNER_VARIANT].src;
+    bannerPreview.alt = `${BANNER_OPTIONS[DEFAULT_BANNER_VARIANT].label} Banner Vorschau`;
+    return;
+  }
+
+  const config = BANNER_OPTIONS[normalized] || BANNER_OPTIONS[DEFAULT_BANNER_VARIANT];
   bannerPreview.src = config.src;
   bannerPreview.alt = `${config.label} Banner Vorschau`;
+}
+
+async function uploadCustomBanner(file) {
+  if (!ALLOWED_MIME.includes(file.type)) {
+    setMessage(bannerMessage, 'Dateityp fuer Banner nicht erlaubt.', 'error');
+    return;
+  }
+
+  if (file.size > MAX_BYTES) {
+    setMessage(bannerMessage, 'Banner ist zu gross (max. 8 MB).', 'error');
+    return;
+  }
+
+  const userId = String(state.user?.id || '').trim();
+  if (!userId) {
+    setMessage(bannerMessage, 'Banner konnte nicht hochgeladen werden: Session ungueltig. Bitte neu einloggen.', 'error');
+    return;
+  }
+
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const key = `${userId}/banners/homepage-${Date.now()}.${ext}`;
+  const previousPath = state.bannerCustomPath;
+
+  setMessage(bannerMessage, 'Banner wird hochgeladen...', 'info');
+
+  const { error: uploadError } = await supabase.storage
+    .from('photos')
+    .upload(key, file, { cacheControl: '3600', contentType: file.type });
+
+  if (uploadError) {
+    setMessage(bannerMessage, `Banner konnte nicht hochgeladen werden: ${uploadError.message}`, 'error');
+    return;
+  }
+
+  const { error: saveError } = await supabase.rpc('admin_set_homepage_banner_custom_path', {
+    p_storage_path: key
+  });
+
+  if (saveError) {
+    await supabase.storage.from('photos').remove([key]).catch(() => {});
+    setMessage(bannerMessage, `Banner-Pfad konnte nicht gespeichert werden: ${saveError.message}`, 'error');
+    return;
+  }
+
+  if (isBannerStoragePath(previousPath) && previousPath !== key) {
+    await supabase.storage.from('photos').remove([previousPath]).catch(() => {});
+  }
+
+  state.bannerCustomPath = key;
+  syncCustomBannerChoicePreview();
+
+  const customRadio = bannerRadios.find(radio => radio.value === 'custom');
+  if (customRadio) customRadio.checked = true;
+
+  updateBannerPreview('custom');
+  setMessage(bannerMessage, 'Eigenes Banner hochgeladen. Klicke jetzt auf "Banner speichern", um es live zu schalten.', 'success');
 }
 
 async function loadInstagramSettings() {
@@ -1326,6 +1428,46 @@ function isTeamMemberStoragePath(path) {
   return normalized.startsWith('team-members/') || normalized.includes('/team-members/');
 }
 
+function isBannerStoragePath(path) {
+  const normalized = String(path || '').trim();
+  return normalized.startsWith('banners/') || normalized.includes('/banners/');
+}
+
+function normalizeBannerCustomPath(path) {
+  return String(path || '').trim();
+}
+
+function normalizeBannerVariant(variant, customPath = state.bannerCustomPath) {
+  const normalized = String(variant || '').trim().toLowerCase();
+  if (normalized === 'custom') {
+    return customPath ? 'custom' : DEFAULT_BANNER_VARIANT;
+  }
+  return normalized in BANNER_OPTIONS ? normalized : DEFAULT_BANNER_VARIANT;
+}
+
+function bannerLabel(variant) {
+  return variant === 'custom'
+    ? 'Eigenes Banner'
+    : (BANNER_OPTIONS[variant]?.label || BANNER_OPTIONS[DEFAULT_BANNER_VARIANT].label);
+}
+
+function syncCustomBannerChoicePreview() {
+  if (customBannerChoicePreview) {
+    customBannerChoicePreview.src = state.bannerCustomPath
+      ? resolveBannerPreviewUrl(state.bannerCustomPath)
+      : BANNER_OPTIONS[DEFAULT_BANNER_VARIANT].src;
+    customBannerChoicePreview.alt = state.bannerCustomPath
+      ? 'Eigenes Banner Vorschau'
+      : `${BANNER_OPTIONS[DEFAULT_BANNER_VARIANT].label} Banner Vorschau`;
+  }
+
+  if (customBannerUploadHint) {
+    customBannerUploadHint.textContent = state.bannerCustomPath
+      ? 'Eigenes Banner ist gespeichert und kann als aktive Auswahl gesetzt werden.'
+      : 'Noch kein eigenes Banner hochgeladen.';
+  }
+}
+
 function slugify(value) {
   return String(value || '')
     .toLowerCase()
@@ -1728,6 +1870,12 @@ function resolvePhotoUrl(path) {
   }
   const { data: pub } = supabase.storage.from('photos').getPublicUrl(path);
   return pub.publicUrl;
+}
+
+function resolveBannerPreviewUrl(path) {
+  const publicUrl = resolvePhotoUrl(path);
+  const separator = publicUrl.includes('?') ? '&' : '?';
+  return `${publicUrl}${separator}t=${Date.now()}`;
 }
 
 function capabilityCard(title, stateLabel, copy) {

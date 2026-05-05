@@ -22,6 +22,8 @@ drop function if exists public.hard_delete_user_account(uuid);
 drop function if exists public.admin_cleanup_expired_test_accounts(text);
 drop function if exists public.get_homepage_instagram_post();
 drop function if exists public.admin_set_homepage_instagram_post(text, text, text, text, timestamptz, text);
+drop function if exists public.get_homepage_banner_custom_path();
+drop function if exists public.admin_set_homepage_banner_custom_path(text);
 drop function if exists public.get_team_members();
 drop function if exists public.admin_set_team_members(jsonb);
 
@@ -175,6 +177,19 @@ as $$
   );
 $$;
 
+create or replace function public.get_homepage_banner_custom_path()
+returns text
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select nullif(
+    (select value_text from public.site_settings where key = 'homepage_banner_custom_path'),
+    ''
+  );
+$$;
+
 create or replace function public.admin_set_homepage_banner(p_variant text)
 returns boolean
 language plpgsql
@@ -186,12 +201,43 @@ begin
     raise exception 'Nur Admins duerfen das Startseiten-Banner aendern.';
   end if;
 
-  if p_variant not in ('sponsor', 'team') then
+  if p_variant not in ('sponsor', 'team', 'custom') then
     raise exception 'Ungueltige Banner-Variante: %', p_variant;
+  end if;
+
+  if p_variant = 'custom'
+     and coalesce((select value_text from public.site_settings where key = 'homepage_banner_custom_path'), '') = '' then
+    raise exception 'Bitte zuerst ein eigenes Banner hochladen.';
   end if;
 
   insert into public.site_settings (key, value_text, updated_at, updated_by)
   values ('homepage_banner_variant', p_variant, now(), auth.uid())
+  on conflict (key) do update
+    set value_text = excluded.value_text,
+        updated_at = now(),
+        updated_by = auth.uid();
+
+  return true;
+end;
+$$;
+
+create or replace function public.admin_set_homepage_banner_custom_path(p_storage_path text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Nur Admins duerfen das Startseiten-Banner aendern.';
+  end if;
+
+  if coalesce(trim(p_storage_path), '') = '' then
+    raise exception 'Banner-Pfad darf nicht leer sein.';
+  end if;
+
+  insert into public.site_settings (key, value_text, updated_at, updated_by)
+  values ('homepage_banner_custom_path', trim(p_storage_path), now(), auth.uid())
   on conflict (key) do update
     set value_text = excluded.value_text,
         updated_at = now(),
@@ -948,11 +994,13 @@ end;
 $$;
 
 grant execute on function public.get_homepage_banner() to anon, authenticated;
+grant execute on function public.get_homepage_banner_custom_path() to anon, authenticated;
 grant execute on function public.check_invite_code(text) to anon, authenticated;
 grant execute on function public.redeem_invite(text) to authenticated;
 grant execute on function public.is_admin(uuid) to authenticated;
 grant execute on function public.current_user_role(uuid) to authenticated;
 grant execute on function public.admin_set_homepage_banner(text) to authenticated;
+grant execute on function public.admin_set_homepage_banner_custom_path(text) to authenticated;
 grant execute on function public.admin_list_invites() to authenticated;
 grant execute on function public.admin_create_invite(text, text, text) to authenticated;
 grant execute on function public.admin_delete_invite(text) to authenticated;
@@ -1135,6 +1183,19 @@ as $$
   );
 $$;
 
+create or replace function public.get_homepage_banner_custom_path()
+returns text
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select nullif(
+    (select value_text from public.site_settings where key = 'homepage_banner_custom_path'),
+    ''
+  );
+$$;
+
 create or replace function public.admin_set_homepage_banner(p_variant text)
 returns boolean
 language plpgsql
@@ -1146,12 +1207,43 @@ begin
     raise exception 'Nur Admins duerfen das Startseiten-Banner aendern.';
   end if;
 
-  if p_variant not in ('sponsor', 'team') then
+  if p_variant not in ('sponsor', 'team', 'custom') then
     raise exception 'Ungueltige Banner-Variante: %', p_variant;
+  end if;
+
+  if p_variant = 'custom'
+     and coalesce((select value_text from public.site_settings where key = 'homepage_banner_custom_path'), '') = '' then
+    raise exception 'Bitte zuerst ein eigenes Banner hochladen.';
   end if;
 
   insert into public.site_settings (key, value_text, updated_at, updated_by)
   values ('homepage_banner_variant', p_variant, now(), auth.uid())
+  on conflict (key) do update
+    set value_text = excluded.value_text,
+        updated_at = now(),
+        updated_by = auth.uid();
+
+  return true;
+end;
+$$;
+
+create or replace function public.admin_set_homepage_banner_custom_path(p_storage_path text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Nur Admins duerfen das Startseiten-Banner aendern.';
+  end if;
+
+  if coalesce(trim(p_storage_path), '') = '' then
+    raise exception 'Banner-Pfad darf nicht leer sein.';
+  end if;
+
+  insert into public.site_settings (key, value_text, updated_at, updated_by)
+  values ('homepage_banner_custom_path', trim(p_storage_path), now(), auth.uid())
   on conflict (key) do update
     set value_text = excluded.value_text,
         updated_at = now(),
@@ -1539,11 +1631,13 @@ end;
 $$;
 
 grant execute on function public.get_homepage_banner() to anon, authenticated;
+grant execute on function public.get_homepage_banner_custom_path() to anon, authenticated;
 grant execute on function public.check_invite_code(text) to anon, authenticated;
 grant execute on function public.redeem_invite(text) to authenticated;
 grant execute on function public.is_admin(uuid) to authenticated;
 grant execute on function public.current_user_role(uuid) to authenticated;
 grant execute on function public.admin_set_homepage_banner(text) to authenticated;
+grant execute on function public.admin_set_homepage_banner_custom_path(text) to authenticated;
 grant execute on function public.admin_list_invites() to authenticated;
 grant execute on function public.admin_create_invite(text, text, text) to authenticated;
 grant execute on function public.admin_delete_invite(text) to authenticated;
