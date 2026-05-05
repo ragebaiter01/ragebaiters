@@ -544,6 +544,83 @@ begin
 end;
 $$;
 
+-- 2026-05-05: Doodle Jason Nutzer-Avatare + globales Leaderboard
+create table if not exists public.doodle_jason_scores (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  best_score integer not null default 0 check (best_score >= 0),
+  updated_at timestamptz not null default now()
+);
+
+create or replace function public.get_doodle_jason_my_highscore()
+returns integer
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select coalesce(
+    (select best_score from public.doodle_jason_scores where user_id = auth.uid()),
+    0
+  );
+$$;
+
+create or replace function public.get_doodle_jason_leaderboard()
+returns table (
+  username text,
+  best_score integer,
+  is_current_user boolean
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select
+    coalesce(p.username, 'mitglied') as username,
+    s.best_score,
+    s.user_id = auth.uid() as is_current_user
+  from public.doodle_jason_scores s
+  left join public.profiles p on p.id = s.user_id
+  where s.best_score > 0
+  order by s.best_score desc, coalesce(lower(p.username), 'mitglied') asc
+  limit 10;
+$$;
+
+create or replace function public.submit_doodle_jason_score(p_score integer)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_score integer;
+  v_best integer;
+begin
+  if auth.uid() is null then
+    raise exception 'Du musst eingeloggt sein, um einen Highscore zu speichern.';
+  end if;
+
+  v_score := greatest(coalesce(p_score, 0), 0);
+
+  insert into public.doodle_jason_scores (user_id, best_score, updated_at)
+  values (auth.uid(), v_score, now())
+  on conflict (user_id) do update
+    set best_score = greatest(public.doodle_jason_scores.best_score, excluded.best_score),
+        updated_at = now();
+
+  select best_score
+  into v_best
+  from public.doodle_jason_scores
+  where user_id = auth.uid();
+
+  return coalesce(v_best, 0);
+end;
+$$;
+
+grant execute on function public.get_doodle_jason_my_highscore() to authenticated;
+grant execute on function public.get_doodle_jason_leaderboard() to authenticated;
+grant execute on function public.submit_doodle_jason_score(integer) to authenticated;
+
 -- ============================================================
 -- Storage-RLS fuer Team-Bilder im Bucket "photos"
 -- ============================================================

@@ -75,6 +75,14 @@
             <h3 style="margin-top: 8px;">Kurz und fies</h3>
           </div>
 
+          <div class="game-profile-card">
+            <img id="playerAvatarPreview" class="game-profile-avatar" src="images/jason.png" alt="Aktuelle Spielfigur">
+            <div class="game-profile-copy">
+              <strong id="playerAvatarName">Spieler wird geladen...</strong>
+              <span id="playerAvatarHint">Deine Figur richtet sich nach deinem Login.</span>
+            </div>
+          </div>
+
           <div class="game-rules">
             <div class="game-rule">
               <div class="game-rule-badge">1</div>
@@ -109,6 +117,30 @@
           <div class="game-status">
             <span class="game-status-dot" aria-hidden="true"></span>
             <span id="gameStatusText">Login wird geprueft...</span>
+          </div>
+
+          <div class="game-scoreboard-card">
+            <div class="game-scoreboard-head">
+              <div>
+                <span class="eyebrow">Highscore</span>
+                <h3 style="margin-top: 8px;">Wer steht ganz oben?</h3>
+              </div>
+            </div>
+
+            <div class="game-scoreboard-meta">
+              <div class="game-score-chip">
+                <span>Dein Bestwert</span>
+                <strong id="myBestScore">0</strong>
+              </div>
+              <div class="game-score-chip">
+                <span>Aktueller Champion</span>
+                <strong id="globalBestScore">-</strong>
+              </div>
+            </div>
+
+            <div class="game-scoreboard-list" id="leaderboardList">
+              <div class="game-scoreboard-empty">Highscore wird geladen...</div>
+            </div>
           </div>
         </aside>
       </div>

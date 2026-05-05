@@ -1185,6 +1185,40 @@ h2 { font-size: clamp(1.8rem, 8vw, 3rem); font-weight: 900; line-height: 1.2; }
   gap: 18px;
 }
 
+.page-doodle-jason .game-profile-card {
+  display: grid;
+  grid-template-columns: 82px 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.page-doodle-jason .game-profile-avatar {
+  width: 82px;
+  height: 82px;
+  object-fit: cover;
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,0.16);
+  box-shadow: 0 12px 26px rgba(0,0,0,0.24);
+}
+
+.page-doodle-jason .game-profile-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.page-doodle-jason .game-profile-copy strong {
+  font-size: 1rem;
+}
+
+.page-doodle-jason .game-profile-copy span {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
 .page-doodle-jason .game-side-card h3,
 .page-doodle-jason .game-side-card p {
   margin: 0;
@@ -1240,6 +1274,102 @@ h2 { font-size: clamp(1.8rem, 8vw, 3rem); font-weight: 900; line-height: 1.2; }
   border-radius: 50%;
   background: #ffd86a;
   box-shadow: 0 0 12px rgba(255,216,106,0.45);
+}
+
+.page-doodle-jason .game-scoreboard-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.page-doodle-jason .game-scoreboard-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.page-doodle-jason .game-score-chip {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.18);
+}
+
+.page-doodle-jason .game-score-chip span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.page-doodle-jason .game-score-chip strong {
+  font-size: 1.1rem;
+}
+
+.page-doodle-jason .game-scoreboard-list {
+  display: grid;
+  gap: 8px;
+}
+
+.page-doodle-jason .game-scoreboard-row,
+.page-doodle-jason .game-scoreboard-empty {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 12px;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.18);
+}
+
+.page-doodle-jason .game-scoreboard-row.is-current-user {
+  background: rgba(183,255,60,0.1);
+  border: 1px solid rgba(183,255,60,0.18);
+}
+
+.page-doodle-jason .game-scoreboard-rank {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.08);
+  font-weight: 900;
+}
+
+.page-doodle-jason .game-scoreboard-row:first-child .game-scoreboard-rank {
+  background: rgba(255,216,106,0.16);
+  color: #ffd86a;
+}
+
+.page-doodle-jason .game-scoreboard-name {
+  min-width: 0;
+}
+
+.page-doodle-jason .game-scoreboard-name strong,
+.page-doodle-jason .game-scoreboard-name span {
+  display: block;
+}
+
+.page-doodle-jason .game-scoreboard-name span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.page-doodle-jason .game-scoreboard-value {
+  font-weight: 900;
+  color: #ffd86a;
+}
+
+.page-doodle-jason .game-scoreboard-empty {
+  grid-template-columns: 1fr;
+  color: var(--muted);
 }
 
 @media (prefers-reduced-motion: reduce) {

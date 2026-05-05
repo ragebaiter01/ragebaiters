@@ -1,7 +1,9 @@
 import {
   initPage,
   getSessionUser,
-  buildScopedUrl
+  getProfile,
+  buildScopedUrl,
+  supabase
 } from './auth.js?v=2026-04-23-1';
 
 await initPage('secret-game');
@@ -16,6 +18,12 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const statusText = document.getElementById('gameStatusText');
 const touchButtons = [...document.querySelectorAll('[data-touch]')];
+const playerAvatarPreview = document.getElementById('playerAvatarPreview');
+const playerAvatarName = document.getElementById('playerAvatarName');
+const playerAvatarHint = document.getElementById('playerAvatarHint');
+const myBestScoreEl = document.getElementById('myBestScore');
+const globalBestScoreEl = document.getElementById('globalBestScore');
+const leaderboardList = document.getElementById('leaderboardList');
 
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
@@ -31,7 +39,20 @@ const PLAYER_H = 50;
 const PLATFORM_W = 70;
 const PLATFORM_H = 14;
 const JETPACK_DUR = 120;
-const LOCAL_SCORE_KEY = 'ragebaiters:doodle-jason-highscore';
+const DEFAULT_PLAYER_SPRITE = 'images/doodle-jason-face.png';
+const PLAYER_IDENTITIES = [
+  { key: 'jason', label: 'Jason', sprite: 'images/jason.png', aliases: ['jason', 'sneiper0'] },
+  { key: 'nils', label: 'Nils', sprite: 'images/doodlenils.png', aliases: ['nils', 'disccave'] },
+  { key: 'michael', label: 'Michael', sprite: 'images/doodlemicha.png', aliases: ['michael', 'mundmbrothers', 'michi'] },
+  { key: 'nathan', label: 'Nathan', sprite: 'images/doodlenathan.png', aliases: ['nathan', 'nathangoldstein', 'goldstein'] },
+  { key: 'ben', label: 'Ben', sprite: 'images/doodleben.png', aliases: ['ben', 'yotzek'] },
+  { key: 'benluca', label: 'Benluca', sprite: 'images/doodlebenluca.png', aliases: ['benluca', 'ben-luca', 'ben_luca'] },
+  { key: 'tobi', label: 'Tobi', sprite: 'images/doodletobi.png', aliases: ['tobi', 'tobias'] }
+];
+
+const userProfile = await getProfile(user.id);
+const playerIdentity = resolvePlayerIdentity(user, userProfile);
+const LOCAL_SCORE_KEY = `ragebaiters:doodle-jason-highscore:${playerIdentity.key}:${user.id}`;
 
 let state = MENU;
 let frameCount = 0;
@@ -49,6 +70,8 @@ let highScore = Number(localStorage.getItem(LOCAL_SCORE_KEY) || 0) || 0;
 let lastRunWasHighScore = false;
 let jetpack = false;
 let jetpackTimer = 0;
+let leaderboardEntries = [];
+let scoreSubmitPending = false;
 
 let platforms = [];
 let powerUps = [];
@@ -56,11 +79,13 @@ let particles = [];
 let clouds = [];
 
 const playerImg = new Image();
-playerImg.src = 'images/doodle-jason-face.png';
+playerImg.src = playerIdentity.sprite;
 
 setupClouds();
 setupInput();
-setStatus('Geheimes Spiel freigeschaltet.');
+syncPlayerUi();
+await loadLeaderboard();
+setStatus(`${playerIdentity.label} ist freigeschaltet.`);
 
 let lastTime = performance.now();
 let accumulator = 0;
@@ -129,7 +154,7 @@ function setupInput() {
 function startGame() {
   state = PLAYING;
   initGame();
-  setStatus('Jason ist unterwegs.');
+  setStatus(`${playerIdentity.label} ist unterwegs.`);
 }
 
 function initGame() {
@@ -292,7 +317,9 @@ function updateGame() {
       localStorage.setItem(LOCAL_SCORE_KEY, String(highScore));
     }
     state = GAME_OVER;
-    setStatus(lastRunWasHighScore ? 'Neuer Rekord gesetzt.' : 'Jason ist abgestuerzt.');
+    syncScoreUi();
+    void persistHighScore(score);
+    setStatus(lastRunWasHighScore ? `${playerIdentity.label} hat einen neuen Rekord gesetzt.` : `${playerIdentity.label} ist abgestuerzt.`);
   }
 }
 
@@ -626,6 +653,165 @@ function drawPlayer() {
   }
 
   ctx.restore();
+}
+
+async function loadLeaderboard() {
+  const [myResult, leaderboardResult] = await Promise.all([
+    supabase.rpc('get_doodle_jason_my_highscore'),
+    supabase.rpc('get_doodle_jason_leaderboard')
+  ]);
+
+  if (!myResult.error) {
+    const remoteHighScore = Number(myResult.data || 0) || 0;
+    highScore = Math.max(highScore, remoteHighScore);
+    localStorage.setItem(LOCAL_SCORE_KEY, String(highScore));
+  } else {
+    console.error('[Doodle Jason] Eigener Highscore konnte nicht geladen werden:', myResult.error);
+  }
+
+  if (!leaderboardResult.error) {
+    leaderboardEntries = Array.isArray(leaderboardResult.data) ? leaderboardResult.data : [];
+  } else {
+    console.error('[Doodle Jason] Leaderboard konnte nicht geladen werden:', leaderboardResult.error);
+    leaderboardEntries = [];
+  }
+
+  syncScoreUi();
+  renderLeaderboard();
+}
+
+async function persistHighScore(points) {
+  if (scoreSubmitPending || !Number.isFinite(points) || points <= 0) return;
+  scoreSubmitPending = true;
+
+  try {
+    const { data, error } = await supabase.rpc('submit_doodle_jason_score', {
+      p_score: Math.max(0, Math.floor(points))
+    });
+
+    if (error) {
+      console.error('[Doodle Jason] Highscore konnte nicht gespeichert werden:', error);
+      return;
+    }
+
+    highScore = Math.max(highScore, Number(data || 0) || 0);
+    localStorage.setItem(LOCAL_SCORE_KEY, String(highScore));
+    await loadLeaderboard();
+  } finally {
+    scoreSubmitPending = false;
+  }
+}
+
+function syncPlayerUi() {
+  if (playerAvatarPreview) {
+    playerAvatarPreview.src = playerIdentity.sprite;
+    playerAvatarPreview.alt = `${playerIdentity.label} Spielfigur`;
+  }
+
+  if (playerAvatarName) {
+    playerAvatarName.textContent = `${playerIdentity.label} ist deine Spielfigur`;
+  }
+
+  if (playerAvatarHint) {
+    playerAvatarHint.textContent = `Login erkannt als ${playerIdentity.username}. Das Spiel nutzt automatisch ${playerIdentity.assetLabel}.`;
+  }
+
+  syncScoreUi();
+}
+
+function syncScoreUi() {
+  if (myBestScoreEl) myBestScoreEl.textContent = String(highScore || 0);
+
+  if (globalBestScoreEl) {
+    const champion = leaderboardEntries[0];
+    globalBestScoreEl.textContent = champion
+      ? `${champion.username || 'Unbekannt'} · ${champion.best_score || 0}`
+      : '-';
+  }
+}
+
+function renderLeaderboard() {
+  if (!leaderboardList) return;
+
+  if (!leaderboardEntries.length) {
+    leaderboardList.innerHTML = '<div class="game-scoreboard-empty">Noch kein globaler Highscore verfuegbar.</div>';
+    return;
+  }
+
+  leaderboardList.innerHTML = leaderboardEntries
+    .map((entry, index) => {
+      const username = escapeHtml(entry.username || 'Unbekannt');
+      const scoreValue = Number(entry.best_score || 0) || 0;
+      const isCurrentUser = Boolean(entry.is_current_user)
+        || normalizeLookupKey(entry.username) === normalizeLookupKey(playerIdentity.username);
+
+      return `
+        <div class="game-scoreboard-row ${isCurrentUser ? 'is-current-user' : ''}">
+          <div class="game-scoreboard-rank">${index + 1}</div>
+          <div class="game-scoreboard-name">
+            <strong>${username}</strong>
+            <span>${isCurrentUser ? 'Das bist du' : 'Globaler Bestwert'}</span>
+          </div>
+          <div class="game-scoreboard-value">${scoreValue}</div>
+        </div>`;
+    })
+    .join('');
+}
+
+function resolvePlayerIdentity(currentUser, profile) {
+  const username = resolveUsername(currentUser, profile);
+  const lookup = normalizeLookupKey(username);
+  const found = PLAYER_IDENTITIES.find(entry =>
+    entry.aliases.some(alias => normalizeLookupKey(alias) === lookup)
+  );
+
+  if (found) {
+    return {
+      ...found,
+      username,
+      assetLabel: found.sprite.split('/').pop() || found.sprite
+    };
+  }
+
+  return {
+    key: lookup || 'default',
+    label: beautifyUsername(username),
+    sprite: DEFAULT_PLAYER_SPRITE,
+    aliases: [],
+    username,
+    assetLabel: DEFAULT_PLAYER_SPRITE.split('/').pop() || DEFAULT_PLAYER_SPRITE
+  };
+}
+
+function resolveUsername(currentUser, profile) {
+  return String(
+    profile?.username
+      || currentUser?.user_metadata?.username
+      || currentUser?.email?.split('@')[0]
+      || 'mitglied'
+  ).trim();
+}
+
+function normalizeLookupKey(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function beautifyUsername(value) {
+  const cleaned = String(value || 'Mitglied').trim();
+  return cleaned ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1) : 'Mitglied';
+}
+
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[char]));
 }
 
 function drawParticles() {
