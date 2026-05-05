@@ -47,7 +47,7 @@ const PLAYER_IDENTITIES = [
   { key: 'nathan', label: 'Nathan', sprite: 'images/doodlenathan.png', aliases: ['nathan', 'nathangoldstein', 'goldstein'] },
   { key: 'ben', label: 'Ben', sprite: 'images/doodleben.png', aliases: ['ben', 'yotzek'] },
   { key: 'benluca', label: 'Benluca', sprite: 'images/doodlebenluca.png', aliases: ['benluca', 'ben-luca', 'ben_luca'] },
-  { key: 'tobi', label: 'Tobi', sprite: 'images/doodletobi.png', aliases: ['tobi', 'tobias'] }
+  { key: 'tobi', label: 'Tobi', sprite: 'images/doodletobi.png', aliases: ['tobi', 'tobias', 'tobse', 'tobsen'] }
 ];
 
 const userProfile = await getProfile(user.id);
@@ -671,10 +671,20 @@ function drawPlayer() {
 }
 
 async function loadLeaderboard() {
-  const [myResult, leaderboardResult] = await Promise.all([
-    supabase.rpc('get_doodle_jason_my_highscore'),
-    supabase.rpc('get_doodle_jason_leaderboard')
-  ]);
+  let myResult;
+  let leaderboardResult;
+
+  try {
+    [myResult, leaderboardResult] = await Promise.all([
+      supabase.rpc('get_doodle_jason_my_highscore'),
+      supabase.rpc('get_doodle_jason_leaderboard')
+    ]);
+  } catch (error) {
+    console.error('[Doodle Jason] Leaderboard-Request ist fehlgeschlagen:', error);
+    syncScoreUi();
+    renderLeaderboard('Leaderboard konnte gerade nicht geladen werden.');
+    return;
+  }
 
   if (!myResult.error) {
     const remoteHighScore = Number(myResult.data || 0) || 0;
@@ -692,7 +702,7 @@ async function loadLeaderboard() {
   }
 
   syncScoreUi();
-  renderLeaderboard();
+  renderLeaderboard(leaderboardResult?.error ? 'Leaderboard konnte gerade nicht geladen werden.' : '');
 }
 
 async function persistHighScore(points) {
@@ -745,11 +755,11 @@ function syncScoreUi() {
   }
 }
 
-function renderLeaderboard() {
+function renderLeaderboard(message = '') {
   if (!leaderboardList) return;
 
   if (!leaderboardEntries.length) {
-    leaderboardList.innerHTML = '<div class="game-scoreboard-empty">Noch kein globaler Highscore verfuegbar.</div>';
+    leaderboardList.innerHTML = `<div class="game-scoreboard-empty">${escapeHtml(message || 'Noch kein globaler Highscore verfuegbar.')}</div>`;
     return;
   }
 
@@ -777,7 +787,7 @@ function resolvePlayerIdentity(currentUser, profile) {
   const username = resolveUsername(currentUser, profile);
   const lookup = normalizeLookupKey(username);
   const found = PLAYER_IDENTITIES.find(entry =>
-    entry.aliases.some(alias => normalizeLookupKey(alias) === lookup)
+    entry.aliases.some(alias => matchesAlias(lookup, alias))
   );
 
   if (found) {
@@ -796,6 +806,14 @@ function resolvePlayerIdentity(currentUser, profile) {
     username,
     assetLabel: DEFAULT_PLAYER_SPRITE.split('/').pop() || DEFAULT_PLAYER_SPRITE
   };
+}
+
+function matchesAlias(lookup, alias) {
+  const normalizedAlias = normalizeLookupKey(alias);
+  if (!lookup || !normalizedAlias) return false;
+  return lookup === normalizedAlias
+    || lookup.includes(normalizedAlias)
+    || normalizedAlias.includes(lookup);
 }
 
 function resolveUsername(currentUser, profile) {
