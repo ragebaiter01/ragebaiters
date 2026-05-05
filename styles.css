@@ -1200,7 +1200,7 @@ h2 { font-size: clamp(1.8rem, 8vw, 3rem); font-weight: 900; line-height: 1.2; }
   width: 82px;
   height: 82px;
   object-fit: cover;
-  border-radius: 22px;
+  border-radius: 50%;
   border: 1px solid rgba(255,255,255,0.16);
   box-shadow: 0 12px 26px rgba(0,0,0,0.24);
 }

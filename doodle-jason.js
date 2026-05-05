@@ -619,18 +619,33 @@ function drawPlayer() {
   if (!facingR) ctx.scale(-1, 1);
 
   if (playerImg.complete && playerImg.naturalWidth > 0) {
+    const bounceScaleY = 1 + Math.min(Math.abs(vy) / 40, 0.08);
+    const bounceScaleX = 1 - Math.min(Math.abs(vy) / 60, 0.05);
+    const glowRadius = 34;
+
+    ctx.save();
+    ctx.scale(bounceScaleX, bounceScaleY);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+    ctx.beginPath();
+    ctx.ellipse(0, 34, 24, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.shadowColor = 'rgba(255,255,255,0.28)';
+    ctx.shadowBlur = 18;
     ctx.save();
     ctx.beginPath();
-    ctx.arc(0, 0, 31, 0, Math.PI * 2);
+    ctx.arc(0, 0, glowRadius, 0, Math.PI * 2);
     ctx.closePath();
     ctx.clip();
-    ctx.drawImage(playerImg, -35, -35, 70, 70);
+    ctx.drawImage(playerImg, -glowRadius, -glowRadius, glowRadius * 2, glowRadius * 2);
     ctx.restore();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(255,255,255,0.82)';
     ctx.beginPath();
-    ctx.arc(0, 0, 31, 0, Math.PI * 2);
+    ctx.arc(0, 0, glowRadius, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.restore();
   } else {
     ctx.fillStyle = '#3090FF';
     ctx.beginPath();
@@ -709,11 +724,11 @@ function syncPlayerUi() {
   }
 
   if (playerAvatarName) {
-    playerAvatarName.textContent = `${playerIdentity.label} ist deine Spielfigur`;
+    playerAvatarName.textContent = `${playerIdentity.label} ist der springende Kopf`;
   }
 
   if (playerAvatarHint) {
-    playerAvatarHint.textContent = `Login erkannt als ${playerIdentity.username}. Das Spiel nutzt automatisch ${playerIdentity.assetLabel}.`;
+    playerAvatarHint.textContent = `Login erkannt als ${playerIdentity.username}. Im Spiel huepft direkt ${playerIdentity.assetLabel} als Ball herum.`;
   }
 
   syncScoreUi();
