@@ -40,15 +40,31 @@ const PLATFORM_W = 70;
 const PLATFORM_H = 14;
 const JETPACK_DUR = 120;
 const DEFAULT_PLAYER_SPRITE = 'images/doodle-jason-face.png';
-const PLAYER_IDENTITIES = [
-  { key: 'jason', label: 'Jason', sprite: 'images/jason.png', aliases: ['jason', 'sneiper0'] },
-  { key: 'nils', label: 'Nils', sprite: 'images/doodlenils.png', aliases: ['nils', 'disccave'] },
-  { key: 'michael', label: 'Michael', sprite: 'images/doodlemicha.png', aliases: ['michael', 'mundmbrothers', 'michi'] },
-  { key: 'nathan', label: 'Nathan', sprite: 'images/doodlenathan.png', aliases: ['nathan', 'nathangoldstein', 'goldstein'] },
-  { key: 'ben', label: 'Ben', sprite: 'images/doodleben.png', aliases: ['ben', 'yotzek'] },
-  { key: 'benluca', label: 'Benluca', sprite: 'images/doodlebenluca.png', aliases: ['benluca', 'ben-luca', 'ben_luca'] },
-  { key: 'tobi', label: 'Tobi', sprite: 'images/doodletobi.png', aliases: ['tobi', 'tobias', 'tobse', 'tobsen'] }
-];
+const PLAYER_BY_USER_ID = {
+  '0126bc68-2349-48f9-a9e8-6fa7b052697f': { key: 'jason', label: 'Jason', sprite: 'images/jason.png' },
+  'c67579e7-6643-4a1a-920d-616f4352210c': { key: 'tobi', label: 'Tobi', sprite: 'images/doodletobi.png' },
+  'a4bb0f6e-e0f3-4741-95b8-b12d82ce17b0': { key: 'nils', label: 'Nils', sprite: 'images/doodlenils.png' },
+  '943a0797-2509-46a3-9259-834242cefb23': { key: 'michael', label: 'Micha', sprite: 'images/doodlemicha.png' },
+  'dbb35b2a-c1c0-4e54-bdc6-3ff9a8b0527a': { key: 'ben', label: 'Yotzek', sprite: 'images/doodleben.png' }
+};
+
+const PLAYER_BY_LOGIN_ID = {
+  jason: { key: 'jason', label: 'Jason', sprite: 'images/jason.png' },
+  sneiper0: { key: 'jason', label: 'Jason', sprite: 'images/jason.png' },
+  nils: { key: 'nils', label: 'Nils', sprite: 'images/doodlenils.png' },
+  disccave: { key: 'nils', label: 'Nils', sprite: 'images/doodlenils.png' },
+  michael: { key: 'michael', label: 'Michael', sprite: 'images/doodlemicha.png' },
+  mundmbrothers: { key: 'michael', label: 'Michael', sprite: 'images/doodlemicha.png' },
+  michi: { key: 'michael', label: 'Michael', sprite: 'images/doodlemicha.png' },
+  nathan: { key: 'nathan', label: 'Nathan', sprite: 'images/doodlenathan.png' },
+  nathangoldstein: { key: 'nathan', label: 'Nathan', sprite: 'images/doodlenathan.png' },
+  goldstein: { key: 'nathan', label: 'Nathan', sprite: 'images/doodlenathan.png' },
+  ben: { key: 'ben', label: 'Ben', sprite: 'images/doodleben.png' },
+  yotzek: { key: 'ben', label: 'Ben', sprite: 'images/doodleben.png' },
+  benluca: { key: 'benluca', label: 'Benluca', sprite: 'images/doodlebenluca.png' },
+  tobi: { key: 'tobi', label: 'Tobi', sprite: 'images/doodletobi.png' },
+  tobias: { key: 'tobi', label: 'Tobi', sprite: 'images/doodletobi.png' }
+};
 
 const userProfile = await getProfile(user.id);
 const playerIdentity = resolvePlayerIdentity(user, userProfile);
@@ -784,11 +800,10 @@ function renderLeaderboard(message = '') {
 }
 
 function resolvePlayerIdentity(currentUser, profile) {
+  const userId = normalizeUserId(currentUser?.id);
   const username = resolveUsername(currentUser, profile);
-  const lookup = normalizeLookupKey(username);
-  const found = PLAYER_IDENTITIES.find(entry =>
-    entry.aliases.some(alias => matchesAlias(lookup, alias))
-  );
+  const loginId = normalizeLookupKey(username);
+  const found = PLAYER_BY_USER_ID[userId] || PLAYER_BY_LOGIN_ID[loginId];
 
   if (found) {
     return {
@@ -799,21 +814,12 @@ function resolvePlayerIdentity(currentUser, profile) {
   }
 
   return {
-    key: lookup || 'default',
+    key: loginId || 'default',
     label: beautifyUsername(username),
     sprite: DEFAULT_PLAYER_SPRITE,
-    aliases: [],
     username,
     assetLabel: DEFAULT_PLAYER_SPRITE.split('/').pop() || DEFAULT_PLAYER_SPRITE
   };
-}
-
-function matchesAlias(lookup, alias) {
-  const normalizedAlias = normalizeLookupKey(alias);
-  if (!lookup || !normalizedAlias) return false;
-  return lookup === normalizedAlias
-    || lookup.includes(normalizedAlias)
-    || normalizedAlias.includes(lookup);
 }
 
 function resolveUsername(currentUser, profile) {
@@ -830,6 +836,10 @@ function normalizeLookupKey(value) {
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '');
+}
+
+function normalizeUserId(value) {
+  return String(value || '').trim().toLowerCase();
 }
 
 function beautifyUsername(value) {
