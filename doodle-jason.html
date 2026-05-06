@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Doodle Jason | die Ragebaiters</title>
+  <title>Arcade | die Ragebaiters</title>
   <link rel="icon" type="image/png" href="images/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="./styles.css?v=2026-05-05-1">
+  <link rel="stylesheet" href="./styles.css?v=2026-05-06-1">
 </head>
 <body class="page-doodle-jason">
 
@@ -52,10 +52,15 @@
       <div class="game-head">
         <div>
           <span class="eyebrow">Geheimer Bereich</span>
-          <h1 style="margin: 12px 0 0;">Doodle Jason</h1>
-          <p>Ein verstecktes Mini-Spiel nur fuer eingeloggte Mitglieder. Spring so hoch wie moeglich und knack den Rekord.</p>
+          <h1 id="gameTitle" style="margin: 12px 0 0;">Arcade-Auswahl</h1>
+          <p id="gameIntro">Waehle zwischen Doodle Jason und Space Invaders Klone. Beide Spiele haben ihren eigenen Highscore.</p>
         </div>
         <a href="index.html">Zur Startseite</a>
+      </div>
+
+      <div class="game-selector" id="gameSelector" aria-label="Spielauswahl">
+        <button type="button" class="game-selector-btn is-active" data-game="doodle_jason">Doodle Jason</button>
+        <button type="button" class="game-selector-btn" data-game="space_invaders">Space Invaders Klone</button>
       </div>
 
       <div class="game-layout">
@@ -65,17 +70,18 @@
           </div>
           <div class="game-touch-controls" aria-label="Touch-Steuerung">
             <button type="button" class="game-touch-btn" data-touch="left">Links</button>
+            <button type="button" class="game-touch-btn" data-touch="fire">Feuer</button>
             <button type="button" class="game-touch-btn" data-touch="right">Rechts</button>
           </div>
         </article>
 
         <aside class="card game-side-card">
           <div>
-            <span class="eyebrow">Steuerung</span>
-            <h3 style="margin-top: 8px;">Kurz und fies</h3>
+            <span class="eyebrow" id="gameMetaKicker">Steuerung</span>
+            <h3 id="gameMetaTitle" style="margin-top: 8px;">Kurz und fies</h3>
           </div>
 
-          <div class="game-profile-card">
+          <div class="game-profile-card" id="playerAvatarCard">
             <img id="playerAvatarPreview" class="game-profile-avatar" src="images/jason.png" alt="Aktuelle Spielfigur">
             <div class="game-profile-copy">
               <strong id="playerAvatarName">Springender Kopf wird geladen...</strong>
@@ -83,36 +89,7 @@
             </div>
           </div>
 
-          <div class="game-rules">
-            <div class="game-rule">
-              <div class="game-rule-badge">1</div>
-              <div class="game-rule-copy">
-                <strong>Bewegen</strong>
-                <span>Mit den Pfeiltasten oder den Touch-Buttons links und rechts steuern.</span>
-              </div>
-            </div>
-            <div class="game-rule">
-              <div class="game-rule-badge">2</div>
-              <div class="game-rule-copy">
-                <strong>Starten</strong>
-                <span>Im Menue auf den Button klicken oder `Enter` bzw. `Leertaste` druecken.</span>
-              </div>
-            </div>
-            <div class="game-rule">
-              <div class="game-rule-badge">3</div>
-              <div class="game-rule-copy">
-                <strong>Ueberleben</strong>
-                <span>Normale Plattformen tragen dich, blaue bewegen sich und braune brechen weg.</span>
-              </div>
-            </div>
-            <div class="game-rule">
-              <div class="game-rule-badge">4</div>
-              <div class="game-rule-copy">
-                <strong>Bonus</strong>
-                <span>Federn geben Superspruenge, Jetpacks schieben dich kurz brutal nach oben.</span>
-              </div>
-            </div>
-          </div>
+          <div class="game-rules" id="gameRules"></div>
 
           <div class="game-status">
             <span class="game-status-dot" aria-hidden="true"></span>
@@ -123,7 +100,7 @@
             <div class="game-scoreboard-head">
               <div>
                 <span class="eyebrow">Highscore</span>
-                <h3 style="margin-top: 8px;">Wer steht ganz oben?</h3>
+                <h3 id="scoreboardTitle" style="margin-top: 8px;">Wer steht ganz oben?</h3>
               </div>
             </div>
 
@@ -154,6 +131,6 @@
 
   <script src="./nav.js?v=2026-04-23-5" defer></script>
   <script src="./config.js?v=2026-04-23-5"></script>
-  <script type="module" src="./doodle-jason.js?v=2026-05-05-1"></script>
+  <script type="module" src="./doodle-jason.js?v=2026-05-06-1"></script>
 </body>
 </html>

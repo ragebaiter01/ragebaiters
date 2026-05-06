@@ -1108,6 +1108,36 @@ h2 { font-size: clamp(1.8rem, 8vw, 3rem); font-weight: 900; line-height: 1.2; }
   gap: 26px;
 }
 
+.page-doodle-jason .game-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.page-doodle-jason .game-selector-btn {
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+  border-radius: 16px;
+  padding: 12px 16px;
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.page-doodle-jason .game-selector-btn:hover {
+  border-color: rgba(183,255,60,0.28);
+  transform: translateY(-1px);
+}
+
+.page-doodle-jason .game-selector-btn.is-active {
+  background: rgba(183,255,60,0.14);
+  border-color: rgba(183,255,60,0.35);
+  color: var(--accent);
+}
+
 .page-doodle-jason .game-head {
   display: flex;
   flex-wrap: wrap;
@@ -1145,7 +1175,8 @@ h2 { font-size: clamp(1.8rem, 8vw, 3rem); font-weight: 900; line-height: 1.2; }
 }
 
 .page-doodle-jason .game-canvas {
-  width: min(100%, 400px);
+  width: 100%;
+  max-width: var(--game-canvas-max-width, 400px);
   height: auto;
   display: block;
   border-radius: 26px;
@@ -1155,9 +1186,10 @@ h2 { font-size: clamp(1.8rem, 8vw, 3rem); font-weight: 900; line-height: 1.2; }
 }
 
 .page-doodle-jason .game-touch-controls {
-  width: min(100%, 400px);
+  width: 100%;
+  max-width: var(--game-canvas-max-width, 400px);
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -1180,6 +1212,10 @@ h2 { font-size: clamp(1.8rem, 8vw, 3rem); font-weight: 900; line-height: 1.2; }
   border-color: rgba(183,255,60,0.34);
 }
 
+.page-doodle-jason .game-touch-btn.is-hidden {
+  display: none;
+}
+
 .page-doodle-jason .game-side-card {
   display: grid;
   gap: 18px;
@@ -1194,6 +1230,10 @@ h2 { font-size: clamp(1.8rem, 8vw, 3rem); font-weight: 900; line-height: 1.2; }
   border-radius: 18px;
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.08);
+}
+
+.page-doodle-jason .game-profile-card[hidden] {
+  display: none;
 }
 
 .page-doodle-jason .game-profile-avatar {
